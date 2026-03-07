@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Downloader</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="title-group">
+                <h1>YouTube Downloader</h1>
+                <span id="appVersion" class="version-badge"></span>
+            </div>
+            <div class="header-buttons">
+                <button id="settingsBtn" class="btn btn-secondary" data-i18n="btn.settings">⚙️ Settings</button>
+            </div>
+        </div>
+
+        <!-- Download Section -->
+        <div class="download-section">
+            <div class="input-group">
+                <input
+                    type="text"
+                    id="urlInput"
+                    data-i18n-placeholder="url.placeholder"
+                    placeholder="Enter URL..."
+                    autocomplete="off"
+                >
+                <button id="mp3Btn" class="btn btn-format" data-format="mp3">MP3</button>
+                <button id="mp4Btn" class="btn btn-format" data-format="mp4">MP4</button>
+                <button id="downloadBtn" class="btn btn-primary" data-i18n="btn.download">⬇️ Download</button>
+            </div>
+        </div>
+
+        <!-- Terminal Output -->
+        <div class="terminal-section">
+            <div class="terminal-header">
+                <span data-i18n="terminal.title">Terminal Output</span>
+                <button id="clearTerminalBtn" class="btn-clear" data-i18n="btn.clear">Clear</button>
+            </div>
+            <div id="terminal" class="terminal"></div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="action-buttons">
+            <button id="openFolderBtn" class="btn btn-secondary" data-i18n="btn.openFolder">📁 Open Download Folder</button>
+            <button id="exitBtn" class="btn btn-danger" data-i18n="btn.exit">❌ Exit</button>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 data-i18n="modal.title">Settings</h2>
+                <button id="closeModalBtn" class="close-btn">&times;</button>
+            </div>
+
+            <div class="modal-body">
+                <!-- Download Path -->
+                <div class="form-group">
+                    <label for="downloadPath" data-i18n="label.downloadPath">Download Path</label>
+                    <div class="input-with-button">
+                        <input type="text" id="downloadPath" readonly>
+                        <button id="selectFolderBtn" class="btn btn-secondary" data-i18n="btn.browse">Browse</button>
+                    </div>
+                    <small class="form-hint" data-i18n="hint.downloadPath">Default: User Desktop</small>
+                </div>
+
+                <!-- Section: Audio -->
+                <div class="settings-section-label" data-i18n="section.audio">Audio</div>
+
+                <div class="form-group">
+                    <label for="audioQuality" data-i18n="label.audioQuality">Audio Quality</label>
+                    <select id="audioQuality">
+                        <option value="128" data-i18n="option.audio128">128 kbps — Small file size</option>
+                        <option value="192" data-i18n="option.audio192">192 kbps — Balanced</option>
+                        <option value="320" data-i18n="option.audio320">320 kbps — Best quality</option>
+                    </select>
+                    <small class="form-hint" data-i18n="hint.audioQuality">Applied when downloading as MP3</small>
+                </div>
+
+                <div class="form-group">
+                    <div class="toggle-row">
+                        <div class="toggle-info">
+                            <span class="toggle-label" data-i18n="label.embedThumbnail">Embed Thumbnail</span>
+                            <small class="form-hint" data-i18n="hint.embedThumbnail">Embed cover art into the downloaded file</small>
+                        </div>
+                        <label class="toggle">
+                            <input type="checkbox" id="embedThumbnail">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Section: Video -->
+                <div class="settings-section-label" data-i18n="section.video">Video</div>
+
+                <div class="form-group">
+                    <label for="videoQuality" data-i18n="label.videoQuality">Video Quality</label>
+                    <select id="videoQuality">
+                        <option value="best" data-i18n="option.videoBest">Best Available</option>
+                        <option value="1080">1080p</option>
+                        <option value="720">720p</option>
+                        <option value="480">480p</option>
+                    </select>
+                    <small class="form-hint" data-i18n="hint.videoQuality">Applied when downloading as MP4</small>
+                </div>
+
+                <div class="form-group">
+                    <label data-i18n="label.subtitles">Download Subtitles</label>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="subtitleMode" id="subtitleOff" value="off">
+                            <span data-i18n="subtitle.off">Off</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="subtitleMode" id="subtitleSeparate" value="separate">
+                            <span data-i18n="subtitle.separate">Separate file</span>
+                            <span class="radio-hint" data-i18n="subtitle.separateHint">(.vtt alongside video)</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="subtitleMode" id="subtitleEmbed" value="embed">
+                            <span data-i18n="subtitle.embed">Embedded</span>
+                        </label>
+                    </div>
+                    <div id="subtitleEmbedOptions" class="radio-sub-group hidden">
+                        <label class="radio-option">
+                            <input type="radio" name="subtitleEmbedFormat" id="subtitleEmbedMp4" value="mp4">
+                            <span data-i18n="subtitle.embedMp4">Embed in MP4</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="subtitleEmbedFormat" id="subtitleEmbedMkv" value="mkv">
+                            <span data-i18n="subtitle.embedMkv">Embed in MKV</span>
+                        </label>
+                    </div>
+                    <div id="subtitleLangGroup" class="hidden" style="margin-top: 10px;">
+                        <label for="subtitleLang" data-i18n="label.subtitleLang" style="display:block; margin-bottom: 6px; font-weight: 500; font-size: 13px; color: #a1a1aa;">Language</label>
+                        <select id="subtitleLang">
+                            <option value="de">Deutsch (de)</option>
+                            <option value="en">English (en)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Section: General -->
+                <div class="settings-section-label" data-i18n="section.general">General</div>
+
+                <div class="form-group">
+                    <label data-i18n="label.appLang">App Language</label>
+                    <select id="appLang">
+                        <option value="de">Deutsch</option>
+                        <option value="en">English</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <div class="toggle-row">
+                        <div class="toggle-info">
+                            <span class="toggle-label" data-i18n="label.skipExisting">Skip Existing Files</span>
+                            <small class="form-hint" data-i18n="hint.skipExisting">Check download folder before starting — skips if already downloaded</small>
+                        </div>
+                        <label class="toggle">
+                            <input type="checkbox" id="skipExisting">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="downloadDelay" data-i18n="label.downloadDelay">Delay Between Downloads</label>
+                    <div class="input-with-suffix">
+                        <input
+                            type="number"
+                            id="downloadDelay"
+                            min="0"
+                            max="120"
+                            placeholder="0"
+                        >
+                        <span class="input-suffix" data-i18n="suffix.sec">sec</span>
+                    </div>
+                    <small class="form-hint" data-i18n="hint.downloadDelay">Pause between playlist items to avoid rate limiting (0 = disabled)</small>
+                </div>
+
+                <div class="form-group">
+                    <div class="toggle-row">
+                        <div class="toggle-info">
+                            <span class="toggle-label" data-i18n="label.notify">Notify on Completion</span>
+                            <small class="form-hint" data-i18n="hint.notify">Windows notification when download finishes</small>
+                        </div>
+                        <label class="toggle">
+                            <input type="checkbox" id="notifyOnComplete">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="toggle-row">
+                        <div class="toggle-info">
+                            <span class="toggle-label" data-i18n="label.clearBetween">Clear Between Playlist Items</span>
+                            <small class="form-hint" data-i18n="hint.clearBetween">Clear terminal output before each new playlist item</small>
+                        </div>
+                        <label class="toggle">
+                            <input type="checkbox" id="clearBetweenItems">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="speedLimit" data-i18n="label.speedLimit">Speed Limit</label>
+                    <input
+                        type="text"
+                        id="speedLimit"
+                        data-i18n-placeholder="placeholder.speedLimit"
+                        placeholder="e.g. 5M, 500K — blank = unlimited"
+                    >
+                    <small class="form-hint" data-i18n="hint.speedLimit">Limit download bandwidth</small>
+                </div>
+
+                <!-- Section: Advanced -->
+                <div class="settings-section-label" data-i18n="section.advanced">Advanced</div>
+
+                <div class="form-group">
+                    <label for="proxyInput" data-i18n="label.proxy">Proxy Server</label>
+                    <input
+                        type="text"
+                        id="proxyInput"
+                        placeholder="socks5://user:pass@127.0.0.1:1080"
+                    >
+                    <small class="form-hint" data-i18n="hint.proxy">Use proxy to hide your IP</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="customArgs" data-i18n="label.customArgs">Custom Arguments</label>
+                    <input
+                        type="text"
+                        id="customArgs"
+                        data-i18n-placeholder="placeholder.customArgs"
+                        placeholder="e.g., --playlist-start 1 --playlist-end 5"
+                    >
+                    <small class="form-hint" data-i18n="hint.customArgs">Additional yt-dlp arguments (space-separated)</small>
+                </div>
+
+                <div class="form-group">
+                    <div class="toggle-row">
+                        <div class="toggle-info">
+                            <span class="toggle-label" data-i18n="label.jsRuntime">Use Node.js JS Runtime</span>
+                            <small class="form-hint" data-i18n="hint.jsRuntime">Requires Node.js installed — improves format extraction for some videos</small>
+                        </div>
+                        <label class="toggle">
+                            <input type="checkbox" id="jsRuntime">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="toggle-row">
+                        <div class="toggle-info">
+                            <span class="toggle-label" data-i18n="label.verbose">Verbose Output</span>
+                            <small class="form-hint" data-i18n="hint.verbose">Show detailed debug info — network requests, format selection, extractor internals</small>
+                        </div>
+                        <label class="toggle">
+                            <input type="checkbox" id="verbose">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="githubToken" data-i18n="label.githubToken">GitHub Token</label>
+                    <input
+                        type="password"
+                        id="githubToken"
+                        data-i18n-placeholder="placeholder.githubToken"
+                        placeholder="ghp_... (optional, for private repo updates)"
+                        autocomplete="off"
+                    >
+                    <small class="form-hint" data-i18n="hint.githubToken">Personal access token for private GitHub repo updates — leave empty for public repos</small>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button id="checkUpdateBtn" class="btn btn-secondary" data-i18n="btn.checkUpdate">↑ Check for Updates</button>
+                <div class="modal-footer-right">
+                    <button id="saveSettingsBtn" class="btn btn-primary" data-i18n="btn.save">Save Settings</button>
+                    <button id="cancelSettingsBtn" class="btn btn-secondary" data-i18n="btn.cancel">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="renderer.js"></script>
+</body>
+</html>

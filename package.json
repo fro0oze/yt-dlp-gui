@@ -1,0 +1,58 @@
+{
+  "name": "yt-dlp-gui",
+  "version": "1.2.0",
+  "description": "GUI for yt-dlp with integrated terminal output",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win"
+  },
+  "keywords": [
+    "yt-dlp",
+    "download",
+    "electron"
+  ],
+  "author": "Thomas",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^39.2.3",
+    "electron-builder": "^24.9.1"
+  },
+  "dependencies": {
+    "7zip-bin": "^5.2.0",
+    "axios": "^1.6.0",
+    "electron-store": "^8.1.0",
+    "electron-updater": "^6.8.3"
+  },
+  "build": {
+    "appId": "com.fro0oze.ytdlp-gui",
+    "productName": "YouTube Downloader",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "node_modules/**/*",
+      "!bin/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "node_modules/7zip-bin",
+        "to": "node_modules/7zip-bin",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "YOUR_GITHUB_USERNAME",
+      "repo": "yt-dlp-gui"
+    }
+  }
+}
