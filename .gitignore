@@ -3,3 +3,5 @@ dist/
 bin/
 *.log
 .env
+.idea/
+.venv/
