@@ -125,17 +125,21 @@ This triggers GitHub Actions, which builds the `.exe` installer and publishes a 
 yt-dlp-gui/
 ├── .github/
 │   └── workflows/
-│       └── release.yml      # GitHub Actions: build & publish on tag push
+│       └── release.yml          # GitHub Actions: build & publish on tag push
 ├── src/
-│   ├── main.js              # Electron main process
-│   ├── preload.js           # IPC bridge
+│   ├── main.js                  # Entry point: window, lifecycle, module wiring
+│   ├── preload.js               # IPC bridge
+│   ├── modules/
+│   │   ├── dependencies.js      # yt-dlp & FFmpeg download/management
+│   │   ├── ipc.js               # All IPC handlers (download, settings, folder)
+│   │   └── updater.js           # electron-updater setup & logic
 │   └── renderer/
-│       ├── index.html       # UI layout
-│       ├── styles.css       # Styling
-│       └── renderer.js      # Frontend logic
+│       ├── index.html           # UI layout
+│       ├── styles.css           # Styling
+│       └── renderer.js          # Frontend logic
 ├── build/
-│   └── icon.ico             # App icon
-├── release.cmd              # Release helper script (dev only)
+│   └── icon.ico                 # App icon
+├── release.cmd                  # Release helper script (dev only)
 └── package.json
 ```
 
