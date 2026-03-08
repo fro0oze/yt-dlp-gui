@@ -1,5 +1,10 @@
 # YouTube Downloader
 
+[![Build & Release](https://github.com/fro0oze/yt-dlp-gui/actions/workflows/release.yml/badge.svg)](https://github.com/fro0oze/yt-dlp-gui/actions/workflows/release.yml)
+[![GitHub release](https://img.shields.io/github/v/release/fro0oze/yt-dlp-gui)](https://github.com/fro0oze/yt-dlp-gui/releases/latest)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Platform: Windows](https://img.shields.io/badge/Platform-Windows-blue?logo=windows)](https://github.com/fro0oze/yt-dlp-gui/releases/latest)
+
 A modern Electron-based GUI for [yt-dlp](https://github.com/yt-dlp/yt-dlp) — download videos and audio from YouTube and 1000+ other platforms, with no command line required.
 
 ## Download
