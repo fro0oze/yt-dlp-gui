@@ -1,6 +1,6 @@
 {
   "name": "yt-dlp-gui",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "description": "GUI for yt-dlp with integrated terminal output",
   "main": "src/main.js",
   "scripts": {
@@ -17,7 +17,7 @@
   "license": "MIT",
   "devDependencies": {
     "electron": "^39.2.3",
-    "electron-builder": "^24.9.1"
+    "electron-builder": "^26.8.1"
   },
   "dependencies": {
     "7zip-bin": "^5.2.0",
@@ -52,7 +52,8 @@
     "publish": {
       "provider": "github",
       "owner": "fro0oze",
-      "repo": "yt-dlp-gui"
+      "repo": "yt-dlp-gui",
+      "releaseType": "release"
     }
   }
 }
