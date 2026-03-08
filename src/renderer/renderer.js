@@ -60,9 +60,6 @@ const TRANSLATIONS = {
         'hint.jsRuntime': 'Benötigt installiertes Node.js — verbessert Format-Erkennung',
         'label.verbose': 'Ausführliche Ausgabe',
         'hint.verbose': 'Detaillierte Debug-Infos — Netzwerk, Formate, Extractor',
-        'label.githubToken': 'GitHub Token',
-        'placeholder.githubToken': 'ghp_... (optional, für private Repos)',
-        'hint.githubToken': 'Persönlicher Access Token für private Repo-Updates — leer lassen bei öffentlichem Repo',
     },
     en: {
         'btn.settings': '⚙️ Settings',
@@ -124,9 +121,6 @@ const TRANSLATIONS = {
         'hint.jsRuntime': 'Requires Node.js installed — improves format extraction for some videos',
         'label.verbose': 'Verbose Output',
         'hint.verbose': 'Show detailed debug info — network requests, format selection, extractor internals',
-        'label.githubToken': 'GitHub Token',
-        'placeholder.githubToken': 'ghp_... (optional, for private repos)',
-        'hint.githubToken': 'Personal access token for private GitHub repo updates — leave empty for public repos',
     }
 };
 
@@ -178,7 +172,6 @@ const verboseCheck = document.getElementById('verbose');
 const jsRuntimeCheck = document.getElementById('jsRuntime');
 const clearBetweenItemsCheck = document.getElementById('clearBetweenItems');
 const appLangSelect = document.getElementById('appLang');
-const githubTokenInput = document.getElementById('githubToken');
 
 // State
 let currentSettings = {};
@@ -227,7 +220,6 @@ function updateSettingsUI() {
     jsRuntimeCheck.checked = !!currentSettings.jsRuntime;
     clearBetweenItemsCheck.checked = currentSettings.clearBetweenItems !== false;
     appLangSelect.value = currentSettings.appLang || 'de';
-    githubTokenInput.value = currentSettings.githubToken || '';
     applyTranslations(currentSettings.appLang || 'de');
     updateFormatButtons(currentSettings.format);
 }
@@ -467,7 +459,6 @@ async function handleSaveSettings() {
         jsRuntime: jsRuntimeCheck.checked,
         clearBetweenItems: clearBetweenItemsCheck.checked,
         appLang: appLangSelect.value,
-        githubToken: githubTokenInput.value.trim()
     };
 
     const result = await window.electronAPI.saveSettings(newSettings);

@@ -26,8 +26,7 @@ const store = new Store({
     customArgs: '',
     verbose: false,
     jsRuntime: false,
-    clearBetweenItems: true,
-    githubToken: ''
+    clearBetweenItems: true
   }
 });
 
@@ -425,11 +424,6 @@ function checkForAppUpdates(silent = false) {
   }
 
   _silentUpdateCheck = silent;
-
-  const token = store.get('githubToken', '');
-  if (token) {
-    autoUpdater.addAuthHeader(`Bearer ${token}`);
-  }
 
   autoUpdater.checkForUpdates().catch((err) => {
     if (!silent) logToTerminal(`[UPDATE] Failed to check for app updates: ${err.message}\n`);
