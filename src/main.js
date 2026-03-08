@@ -519,6 +519,12 @@ ipcMain.handle('save-settings', (event, settings) => {
   return { success: true };
 });
 
+// Update Format
+ipcMain.handle('update-format', (event, newFormat) => {
+  store.set('format', newFormat);
+  return { success: true };
+});
+
 // Start download
 ipcMain.handle('start-download', async (event, url) => {
   const settings = store.store;

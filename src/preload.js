@@ -7,6 +7,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getSettings: () => ipcRenderer.invoke('get-settings'),
   saveSettings: (settings) => ipcRenderer.invoke('save-settings', settings),
 
+  // Update Format
+  updateFormat: (newFormat) => ipcRenderer.invoke('update-format', newFormat),
+
   // Download
   startDownload: (url) => ipcRenderer.invoke('start-download', url),
 

@@ -236,7 +236,9 @@ function updateSettingsUI() {
 function updateFormatButtons(format) {
     mp3Btn.classList.toggle('active', format === 'mp3');
     mp4Btn.classList.toggle('active', format === 'mp4');
-    handleSaveSettings();
+    
+    const activeFormat = mp3Btn.classList.contains('active') ? 'mp3' : 'mp4';
+    window.electronAPI.updateFormat(activeFormat);
 }
 
 // Setup Event Listeners
