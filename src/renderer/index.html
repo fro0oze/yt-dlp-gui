@@ -29,9 +29,16 @@
                     placeholder="Enter URL..."
                     autocomplete="off"
                 >
-                <button id="mp3Btn" class="btn btn-format" data-format="mp3">MP3</button>
-                <button id="mp4Btn" class="btn btn-format" data-format="mp4">MP4</button>
-                <button id="downloadBtn" class="btn btn-primary" data-i18n="btn.download">⬇️ Download</button>
+                <div class="btn-group">
+                    <button id="mp3Btn" class="btn btn-format" data-format="mp3">MP3</button>
+                    <button id="mp4Btn" class="btn btn-format" data-format="mp4">MP4</button>
+                </div>
+                <div class="btn-group-divider"></div>
+                <div class="btn-group">
+                    <button id="vpnBtn" class="btn btn-format btn-vpn" data-i18n="btn.vpn">VPN</button>
+                    <button id="subBtn" class="btn btn-format btn-sub">SUB</button>
+                    <button id="downloadBtn" class="btn btn-primary" data-i18n="btn.download">⬇️ Download</button>
+                </div>
             </div>
         </div>
 
@@ -47,7 +54,35 @@
         <!-- Action Buttons -->
         <div class="action-buttons">
             <button id="openFolderBtn" class="btn btn-secondary" data-i18n="btn.openFolder">📁 Open Download Folder</button>
+            <button id="changeFolderBtn" class="btn btn-secondary" data-i18n="btn.changeFolder">📂 Change Folder</button>
             <button id="exitBtn" class="btn btn-danger" data-i18n="btn.exit">❌ Exit</button>
+        </div>
+    </div>
+
+    <!-- Language Picker Modal -->
+    <div id="langModal" class="modal">
+        <div class="modal-content modal-content-sm">
+            <div class="modal-header">
+                <h2 id="langModalTitle">Select Languages</h2>
+                <button id="closeLangModalBtn" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="langAudioSection">
+                    <div class="settings-section-label">Audio</div>
+                    <div id="langAudioList" class="lang-list"></div>
+                </div>
+                <div id="langSubSection">
+                    <div class="settings-section-label">Subtitles</div>
+                    <div id="langSubList" class="lang-list"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <div></div>
+                <div class="modal-footer-right">
+                    <button id="langDownloadBtn" class="btn btn-primary">⬇️ Download</button>
+                    <button id="langCancelBtn" class="btn btn-secondary">Cancel</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -111,38 +146,15 @@
                 </div>
 
                 <div class="form-group">
-                    <label data-i18n="label.subtitles">Download Subtitles</label>
-                    <div class="radio-group">
-                        <label class="radio-option">
-                            <input type="radio" name="subtitleMode" id="subtitleOff" value="off">
-                            <span data-i18n="subtitle.off">Off</span>
+                    <div class="toggle-row">
+                        <div class="toggle-info">
+                            <span class="toggle-label" data-i18n="label.subtitles">Download Subtitles</span>
+                            <small class="form-hint" data-i18n="hint.subtitles">Deutsch + Originalsprache eingebettet in MKV</small>
+                        </div>
+                        <label class="toggle">
+                            <input type="checkbox" id="subtitlesEnabled">
+                            <span class="toggle-slider"></span>
                         </label>
-                        <label class="radio-option">
-                            <input type="radio" name="subtitleMode" id="subtitleSeparate" value="separate">
-                            <span data-i18n="subtitle.separate">Separate file</span>
-                            <span class="radio-hint" data-i18n="subtitle.separateHint">(.vtt alongside video)</span>
-                        </label>
-                        <label class="radio-option">
-                            <input type="radio" name="subtitleMode" id="subtitleEmbed" value="embed">
-                            <span data-i18n="subtitle.embed">Embedded</span>
-                        </label>
-                    </div>
-                    <div id="subtitleEmbedOptions" class="radio-sub-group hidden">
-                        <label class="radio-option">
-                            <input type="radio" name="subtitleEmbedFormat" id="subtitleEmbedMp4" value="mp4">
-                            <span data-i18n="subtitle.embedMp4">Embed in MP4</span>
-                        </label>
-                        <label class="radio-option">
-                            <input type="radio" name="subtitleEmbedFormat" id="subtitleEmbedMkv" value="mkv">
-                            <span data-i18n="subtitle.embedMkv">Embed in MKV</span>
-                        </label>
-                    </div>
-                    <div id="subtitleLangGroup" class="hidden" style="margin-top: 10px;">
-                        <label for="subtitleLang" data-i18n="label.subtitleLang" style="display:block; margin-bottom: 6px; font-weight: 500; font-size: 13px; color: #a1a1aa;">Language</label>
-                        <select id="subtitleLang">
-                            <option value="de">Deutsch (de)</option>
-                            <option value="en">English (en)</option>
-                        </select>
                     </div>
                 </div>
 
@@ -227,12 +239,16 @@
 
                 <div class="form-group">
                     <label for="proxyInput" data-i18n="label.proxy">Proxy Server</label>
-                    <input
-                        type="text"
-                        id="proxyInput"
-                        placeholder="socks5://user:pass@127.0.0.1:1080"
-                    >
+                    <div class="proxy-input-row">
+                        <input
+                            type="text"
+                            id="proxyInput"
+                            placeholder="socks5://user:pass@127.0.0.1:1080"
+                        >
+                        <button id="addProxyBtn" class="btn btn-secondary btn-icon" title="Add to list">+</button>
+                    </div>
                     <small class="form-hint" data-i18n="hint.proxy">Use proxy to hide your IP</small>
+                    <div id="proxyList" class="proxy-list"></div>
                 </div>
 
                 <div class="form-group">

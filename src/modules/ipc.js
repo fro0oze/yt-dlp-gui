@@ -8,7 +8,7 @@ module.exports = function registerIpc({ ipcMain, store, getWindow, ytdlpPath, bi
   function checkIfFileExists(url, settings) {
     return new Promise((resolve) => {
       const args = ['--skip-download', '--no-playlist', '--print', '%(id)s'];
-      if (settings.proxy && settings.proxy.trim()) args.push('--proxy', settings.proxy.trim());
+      if (settings.proxyEnabled && settings.proxy && settings.proxy.trim()) args.push('--proxy', settings.proxy.trim());
       args.push(url);
 
       log('[SYSTEM] Checking for existing file...\n');
@@ -26,8 +26,10 @@ module.exports = function registerIpc({ ipcMain, store, getWindow, ytdlpPath, bi
         try {
           if (!fs.existsSync(settings.downloadPath)) return resolve({ exists: false });
           const files = fs.readdirSync(settings.downloadPath);
-          const ext = settings.format === 'mp4' ? '.mp4' : '.mp3';
-          const match = files.find(f => f.includes(`[${id}]`) && f.endsWith(ext));
+          const exts = settings.format === 'mp4'
+            ? (settings.subtitlesEnabled ? ['.mkv', '.mp4'] : ['.mp4'])
+            : ['.mp3'];
+          const match = files.find(f => f.includes(`[${id}]`) && exts.some(ext => f.endsWith(ext)));
           resolve(match ? { exists: true, filename: match } : { exists: false });
         } catch {
           resolve({ exists: false });
@@ -52,9 +54,95 @@ module.exports = function registerIpc({ ipcMain, store, getWindow, ytdlpPath, bi
     return { success: true };
   });
 
+  ipcMain.handle('toggle-proxy', (event, { proxyEnabled, proxy, savedProxies }) => {
+    store.set('proxyEnabled', proxyEnabled);
+    if (proxy !== undefined) store.set('proxy', proxy);
+    if (savedProxies !== undefined) store.set('savedProxies', savedProxies);
+    return { success: true };
+  });
+
+  // ─── Language Detection ─────────────────────────────────────────────────────
+
+  ipcMain.handle('list-languages', (event, url) => {
+    return new Promise((resolve) => {
+      const settings = store.store;
+      const args = ['--dump-single-json', '--no-download', '--no-playlist', '--no-warnings'];
+      if (settings.proxyEnabled && settings.proxy && settings.proxy.trim()) args.push('--proxy', settings.proxy.trim());
+      args.push(url);
+
+      log('[SYSTEM] Detecting available languages...\n');
+
+      const proc = spawn(ytdlpPath, args, { windowsHide: true });
+      const chunks = [];
+
+      proc.stdout.on('data', (data) => { chunks.push(data); });
+      proc.stderr.on('data', () => {});
+
+      proc.on('close', (code) => {
+        if (code !== 0) return resolve({ success: false });
+
+        try {
+          const info = JSON.parse(Buffer.concat(chunks).toString());
+
+          // Audio languages from formats
+          const audioLangs = new Map();
+          (info.formats || []).forEach(f => {
+            if (!f.acodec || f.acodec === 'none') return;
+            const lang = f.language || null;
+            if (!lang) return;
+            if (!audioLangs.has(lang)) {
+              audioLangs.set(lang, { code: lang, name: f.format_note || lang });
+            }
+          });
+          const audioResult = [{ code: 'original', name: 'Original' }, ...Array.from(audioLangs.values())];
+
+          // Subtitle languages (manual + auto-generated)
+          const subLangs = new Map();
+          for (const [code, entries] of Object.entries(info.subtitles || {})) {
+            if (code === 'live_chat') continue;
+            const name = (entries[0] && entries[0].name) || code;
+            subLangs.set(code, { code, name, auto: false });
+          }
+          for (const [code, entries] of Object.entries(info.automatic_captions || {})) {
+            if (code === 'live_chat') continue;
+            if (!subLangs.has(code)) {
+              const name = (entries[0] && entries[0].name) || code;
+              subLangs.set(code, { code, name, auto: true });
+            }
+          }
+
+          resolve({
+            success: true,
+            title: info.title || '',
+            audio: audioResult,
+            subtitles: Array.from(subLangs.values()),
+          });
+        } catch {
+          resolve({ success: false });
+        }
+      });
+
+      proc.on('error', () => resolve({ success: false }));
+    });
+  });
+
   // ─── Download ──────────────────────────────────────────────────────────────
 
-  ipcMain.handle('start-download', async (event, url) => {
+  let activeDownload = null;
+
+  ipcMain.handle('cancel-download', () => {
+    if (activeDownload) {
+      const pid = activeDownload.pid;
+      activeDownload = null;
+      // Windows: SIGTERM doesn't work reliably, use taskkill to kill process tree
+      spawn('taskkill', ['/pid', String(pid), '/f', '/t'], { windowsHide: true });
+      log('\n[SYSTEM] Download cancelled.\n\n');
+      getWindow().webContents.send('download-complete', { success: false, cancelled: true });
+    }
+    return { success: true };
+  });
+
+  ipcMain.handle('start-download', async (event, url, langOptions) => {
     const settings = store.store;
 
     if (settings.skipExisting) {
@@ -78,16 +166,41 @@ module.exports = function registerIpc({ ipcMain, store, getWindow, ytdlpPath, bi
     } else if (settings.format === 'mp4') {
       const q = settings.videoQuality || 'best';
       const videoFilter = q === 'best' ? 'bestvideo' : `bestvideo[height<=${q}]`;
-      const containerFormat = settings.subtitleMode === 'embed-mkv' ? 'mkv' : 'mp4';
-      args.push('-f', `${videoFilter}+bestaudio/best`, '--merge-output-format', containerFormat);
+
+      if (settings.subtitlesEnabled && langOptions) {
+        // MKV mit gewählten Audio-Sprachen
+        const audioLangs = langOptions.audio || [];
+        // "original" = bestaudio without language filter
+        const langFilters = audioLangs.filter(l => l !== 'original').map(l => `bestaudio[language=${l}]`);
+        const hasOriginal = audioLangs.includes('original');
+
+        if (langFilters.length > 0 && hasOriginal) {
+          // Specific languages + original fallback
+          args.push('-f', `${videoFilter}+${langFilters.join('+')}/+bestaudio/${videoFilter}+bestaudio/best`);
+          args.push('--audio-multistreams');
+        } else if (langFilters.length > 1) {
+          args.push('-f', `${videoFilter}+${langFilters.join('+')}/${videoFilter}+bestaudio/best`);
+          args.push('--audio-multistreams');
+        } else if (langFilters.length === 1) {
+          args.push('-f', `${videoFilter}+${langFilters[0]}/${videoFilter}+bestaudio/best`);
+        } else {
+          args.push('-f', `${videoFilter}+bestaudio/best`);
+        }
+        args.push('--merge-output-format', 'mkv');
+      } else {
+        args.push('-f', `${videoFilter}+bestaudio/best`);
+        args.push('--merge-output-format', 'mp4');
+      }
+
       args.push('--ppa', 'Merger+ffmpeg:-c:v copy -c:a aac');
       if (settings.embedThumbnail) args.push('--embed-thumbnail');
     }
 
-    if (settings.subtitleMode === 'separate') {
-      args.push('--write-subs', '--write-auto-subs', '--sub-langs', settings.subtitleLang || 'de');
-    } else if (settings.subtitleMode === 'embed' || settings.subtitleMode === 'embed-mkv') {
-      args.push('--write-subs', '--write-auto-subs', '--embed-subs', '--sub-langs', settings.subtitleLang || 'de');
+    if (settings.subtitlesEnabled && langOptions) {
+      const subLangs = langOptions.subtitles || [];
+      if (subLangs.length > 0) {
+        args.push('--write-subs', '--write-auto-subs', '--embed-subs', '--sub-langs', subLangs.join(','));
+      }
     }
 
     if (settings.speedLimit && settings.speedLimit.trim() !== '') args.push('--limit-rate', settings.speedLimit.trim());
@@ -96,8 +209,11 @@ module.exports = function registerIpc({ ipcMain, store, getWindow, ytdlpPath, bi
     const delay = parseInt(settings.downloadDelay || '0', 10);
     if (delay > 0) args.push('--sleep-interval', String(delay));
 
-    if (settings.proxy && settings.proxy.trim() !== '') args.push('--proxy', settings.proxy.trim());
-    if (settings.customArgs && settings.customArgs.trim() !== '') args.push(...settings.customArgs.trim().split(' '));
+    if (settings.proxyEnabled && settings.proxy && settings.proxy.trim() !== '') args.push('--proxy', settings.proxy.trim());
+    if (settings.customArgs && settings.customArgs.trim() !== '') {
+      const customArgs = settings.customArgs.trim().match(/(?:[^\s"]+|"[^"]*")+/g) || [];
+      args.push(...customArgs.map(a => a.replace(/^"|"$/g, '')));
+    }
     if (settings.jsRuntime) args.push('--js-runtimes', 'node');
     if (settings.verbose) args.push('--verbose');
 
@@ -108,6 +224,7 @@ module.exports = function registerIpc({ ipcMain, store, getWindow, ytdlpPath, bi
     if (settings.verbose) log(`[COMMAND] yt-dlp ${args.join(' ')}\n\n`);
 
     const downloadProcess = spawn(ytdlpPath, args, { windowsHide: true });
+    activeDownload = downloadProcess;
 
     let stdoutBuffer = '';
     let stderrBuffer = '';
@@ -136,6 +253,20 @@ module.exports = function registerIpc({ ipcMain, store, getWindow, ytdlpPath, bi
     });
 
     downloadProcess.on('close', (code, signal) => {
+      const wasCancelled = activeDownload === null;
+      activeDownload = null;
+      if (wasCancelled) return;
+      // VTT-Dateien aufräumen nach erfolgreichem Einbetten
+      if (settings.subtitlesEnabled && (code === 0 || code === 1)) {
+        try {
+          const vttFiles = fs.readdirSync(settings.downloadPath).filter(f => f.endsWith('.vtt'));
+          vttFiles.forEach(f => {
+            try { fs.unlinkSync(path.join(settings.downloadPath, f)); } catch {}
+          });
+          if (vttFiles.length > 0) log(`[SYSTEM] Cleaned up ${vttFiles.length} .vtt file(s)\n`);
+        } catch {}
+      }
+
       if (code === 0 || code === 1) {
         const msg = code === 1
           ? '\n[SUCCESS] Download completed (some items were skipped).\n\n'

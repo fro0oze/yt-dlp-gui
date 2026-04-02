@@ -10,8 +10,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Update Format
   updateFormat: (newFormat) => ipcRenderer.invoke('update-format', newFormat),
 
+  // Toggle Proxy
+  toggleProxy: (data) => ipcRenderer.invoke('toggle-proxy', data),
+
+  // Languages
+  listLanguages: (url) => ipcRenderer.invoke('list-languages', url),
+
   // Download
-  startDownload: (url) => ipcRenderer.invoke('start-download', url),
+  startDownload: (url, langOptions) => ipcRenderer.invoke('start-download', url, langOptions),
+  cancelDownload: () => ipcRenderer.invoke('cancel-download'),
 
   // Folder operations
   openFolder: () => ipcRenderer.invoke('open-folder'),

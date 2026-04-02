@@ -1,6 +1,6 @@
 {
   "name": "yt-dlp-gui",
-  "version": "1.2.5",
+  "version": "1.2.6",
   "description": "GUI for yt-dlp with integrated terminal output",
   "main": "src/main.js",
   "scripts": {
@@ -21,8 +21,8 @@
   },
   "dependencies": {
     "7zip-bin": "^5.2.0",
-    "axios": "^1.6.0",
-    "electron-store": "^8.1.0",
+    "axios": "1.14.0",
+    "electron-store": "^8.2.0",
     "electron-updater": "^6.8.3"
   },
   "build": {

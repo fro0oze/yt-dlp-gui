@@ -4,7 +4,9 @@ const TRANSLATIONS = {
         'btn.settings': '⚙️ Einstellungen',
         'btn.download': '⬇️ Download',
         'btn.download.busy': '⏳ Lädt...',
+        'btn.cancel': '✖ Abbrechen',
         'btn.openFolder': '📁 Download-Ordner öffnen',
+        'btn.changeFolder': '📂 Ordner wählen',
         'btn.exit': '❌ Beenden',
         'terminal.title': 'Terminal',
         'btn.clear': 'Leeren',
@@ -28,14 +30,8 @@ const TRANSLATIONS = {
         'label.videoQuality': 'Videoqualität',
         'option.videoBest': 'Beste verfügbar',
         'hint.videoQuality': 'Gilt für MP4-Downloads',
-        'label.subtitles': 'Untertitel',
-        'subtitle.off': 'Aus',
-        'subtitle.separate': 'Separate Datei',
-        'subtitle.separateHint': '(.vtt neben dem Video)',
-        'subtitle.embed': 'Eingebettet',
-        'subtitle.embedMp4': 'In MP4 einbetten',
-        'subtitle.embedMkv': 'In MKV einbetten',
-        'label.subtitleLang': 'Sprache',
+        'label.subtitles': 'Untertitel herunterladen',
+        'hint.subtitles': 'Deutsch + Originalsprache eingebettet in MKV',
         'section.general': 'Allgemein',
         'label.appLang': 'App-Sprache',
         'label.skipExisting': 'Bestehende Dateien überspringen',
@@ -60,12 +56,15 @@ const TRANSLATIONS = {
         'hint.jsRuntime': 'Benötigt installiertes Node.js — verbessert Format-Erkennung',
         'label.verbose': 'Ausführliche Ausgabe',
         'hint.verbose': 'Detaillierte Debug-Infos — Netzwerk, Formate, Extractor',
+        'btn.vpn': 'VPN',
     },
     en: {
         'btn.settings': '⚙️ Settings',
         'btn.download': '⬇️ Download',
         'btn.download.busy': '⏳ Downloading...',
+        'btn.cancel': '✖ Cancel',
         'btn.openFolder': '📁 Open Download Folder',
+        'btn.changeFolder': '📂 Change Folder',
         'btn.exit': '❌ Exit',
         'terminal.title': 'Terminal Output',
         'btn.clear': 'Clear',
@@ -90,13 +89,7 @@ const TRANSLATIONS = {
         'option.videoBest': 'Best Available',
         'hint.videoQuality': 'Applied when downloading as MP4',
         'label.subtitles': 'Download Subtitles',
-        'subtitle.off': 'Off',
-        'subtitle.separate': 'Separate file',
-        'subtitle.separateHint': '(.vtt alongside video)',
-        'subtitle.embed': 'Embedded',
-        'subtitle.embedMp4': 'Embed in MP4',
-        'subtitle.embedMkv': 'Embed in MKV',
-        'label.subtitleLang': 'Language',
+        'hint.subtitles': 'German + original language embedded in MKV',
         'section.general': 'General',
         'label.appLang': 'App Language',
         'label.skipExisting': 'Skip Existing Files',
@@ -121,6 +114,7 @@ const TRANSLATIONS = {
         'hint.jsRuntime': 'Requires Node.js installed — improves format extraction for some videos',
         'label.verbose': 'Verbose Output',
         'hint.verbose': 'Show detailed debug info — network requests, format selection, extractor internals',
+        'btn.vpn': 'VPN',
     }
 };
 
@@ -142,6 +136,7 @@ const downloadBtn = document.getElementById('downloadBtn');
 const mp3Btn = document.getElementById('mp3Btn');
 const mp4Btn = document.getElementById('mp4Btn');
 const openFolderBtn = document.getElementById('openFolderBtn');
+const changeFolderBtn = document.getElementById('changeFolderBtn');
 const exitBtn = document.getElementById('exitBtn');
 const settingsBtn = document.getElementById('settingsBtn');
 const terminal = document.getElementById('terminal');
@@ -159,9 +154,7 @@ const selectFolderBtn = document.getElementById('selectFolderBtn');
 const audioQualitySelect = document.getElementById('audioQuality');
 const videoQualitySelect = document.getElementById('videoQuality');
 const embedThumbnailCheck = document.getElementById('embedThumbnail');
-const subtitleEmbedOptions = document.getElementById('subtitleEmbedOptions');
-const subtitleLangGroup = document.getElementById('subtitleLangGroup');
-const subtitleLangSelect = document.getElementById('subtitleLang');
+const subtitlesEnabledCheck = document.getElementById('subtitlesEnabled');
 const skipExistingCheck = document.getElementById('skipExisting');
 const downloadDelayInput = document.getElementById('downloadDelay');
 const notifyOnCompleteCheck = document.getElementById('notifyOnComplete');
@@ -172,11 +165,27 @@ const verboseCheck = document.getElementById('verbose');
 const jsRuntimeCheck = document.getElementById('jsRuntime');
 const clearBetweenItemsCheck = document.getElementById('clearBetweenItems');
 const appLangSelect = document.getElementById('appLang');
+const vpnBtn = document.getElementById('vpnBtn');
+const subBtn = document.getElementById('subBtn');
+const addProxyBtn = document.getElementById('addProxyBtn');
+const proxyListEl = document.getElementById('proxyList');
+
+// Language Modal Elements
+const langModal = document.getElementById('langModal');
+const langModalTitle = document.getElementById('langModalTitle');
+const closeLangModalBtn = document.getElementById('closeLangModalBtn');
+const langDownloadBtn = document.getElementById('langDownloadBtn');
+const langCancelBtn = document.getElementById('langCancelBtn');
+const langAudioList = document.getElementById('langAudioList');
+const langSubList = document.getElementById('langSubList');
+const langAudioSection = document.getElementById('langAudioSection');
+const langSubSection = document.getElementById('langSubSection');
 
 // State
 let currentSettings = {};
 let isDownloading = false;
 let lastLineIsProgress = false;
+let pendingDownloadUrl = '';
 
 // Initialize
 async function init() {
@@ -201,15 +210,7 @@ function updateSettingsUI() {
     audioQualitySelect.value = currentSettings.audioQuality || '192';
     videoQualitySelect.value = currentSettings.videoQuality || 'best';
     embedThumbnailCheck.checked = !!currentSettings.embedThumbnail;
-    const subtitleMode = currentSettings.subtitleMode || 'off';
-    const subtitleRadio = document.querySelector(`input[name="subtitleMode"][value="${subtitleMode === 'embed-mkv' ? 'embed' : subtitleMode}"]`);
-    if (subtitleRadio) subtitleRadio.checked = true;
-    const embedFormat = subtitleMode === 'embed-mkv' ? 'mkv' : 'mp4';
-    const embedFormatRadio = document.querySelector(`input[name="subtitleEmbedFormat"][value="${embedFormat}"]`);
-    if (embedFormatRadio) embedFormatRadio.checked = true;
-    subtitleEmbedOptions.classList.toggle('hidden', subtitleMode !== 'embed' && subtitleMode !== 'embed-mkv');
-    subtitleLangGroup.classList.toggle('hidden', subtitleMode === 'off');
-    subtitleLangSelect.value = currentSettings.subtitleLang || 'de';
+    subtitlesEnabledCheck.checked = !!currentSettings.subtitlesEnabled;
     skipExistingCheck.checked = currentSettings.skipExisting !== false;
     downloadDelayInput.value = currentSettings.downloadDelay || '0';
     notifyOnCompleteCheck.checked = currentSettings.notifyOnComplete !== false;
@@ -222,15 +223,155 @@ function updateSettingsUI() {
     appLangSelect.value = currentSettings.appLang || 'de';
     applyTranslations(currentSettings.appLang || 'de');
     updateFormatButtons(currentSettings.format);
+    updateVpnButton();
+    updateSubButton();
+    renderProxyList();
 }
 
 // Update active state of format buttons
 function updateFormatButtons(format) {
     mp3Btn.classList.toggle('active', format === 'mp3');
     mp4Btn.classList.toggle('active', format === 'mp4');
-    
+    mp4Btn.textContent = currentSettings.subtitlesEnabled ? 'MKV' : 'MP4';
+
     const activeFormat = mp3Btn.classList.contains('active') ? 'mp3' : 'mp4';
     window.electronAPI.updateFormat(activeFormat);
+}
+
+// Update SUB button state and MP4/MKV label
+function updateSubButton() {
+    subBtn.classList.toggle('active', !!currentSettings.subtitlesEnabled);
+    mp4Btn.textContent = currentSettings.subtitlesEnabled ? 'MKV' : 'MP4';
+}
+
+// Toggle subtitles on/off
+async function toggleSub() {
+    currentSettings.subtitlesEnabled = !currentSettings.subtitlesEnabled;
+    updateSubButton();
+    await window.electronAPI.saveSettings(currentSettings);
+    showToast(currentSettings.subtitlesEnabled ? 'Subtitles ON — MKV' : 'Subtitles OFF — MP4');
+}
+
+// Update VPN button state
+function updateVpnButton() {
+    const enabled = !!currentSettings.proxyEnabled;
+    const hasProxy = (currentSettings.savedProxies || []).length > 0 || (currentSettings.proxy && currentSettings.proxy.trim());
+    vpnBtn.classList.toggle('active', enabled && hasProxy);
+}
+
+// Toggle VPN on/off
+async function toggleVpn() {
+    const proxies = currentSettings.savedProxies || [];
+    const hasProxy = proxies.length > 0 || (currentSettings.proxy && currentSettings.proxy.trim());
+    if (!hasProxy) {
+        appendToTerminal('[SYSTEM] No proxy configured. Add a proxy in Settings first.\n\n');
+        return;
+    }
+    currentSettings.proxyEnabled = !currentSettings.proxyEnabled;
+    // If enabling and no active proxy set but savedProxies exist, use the first one
+    if (currentSettings.proxyEnabled && (!currentSettings.proxy || !currentSettings.proxy.trim()) && proxies.length > 0) {
+        currentSettings.proxy = proxies[0];
+    }
+    updateVpnButton();
+    await window.electronAPI.toggleProxy({
+        proxyEnabled: currentSettings.proxyEnabled,
+        proxy: currentSettings.proxy,
+        savedProxies: currentSettings.savedProxies,
+    });
+    if (currentSettings.proxyEnabled) {
+        showToast(`VPN ON — ${currentSettings.proxy}`);
+    } else {
+        showToast('VPN OFF');
+    }
+}
+
+// Render proxy list in settings
+function renderProxyList() {
+    proxyListEl.innerHTML = '';
+    const proxies = currentSettings.savedProxies || [];
+    proxies.forEach((proxy, index) => {
+        const item = document.createElement('div');
+        item.className = 'proxy-item' + (currentSettings.proxy === proxy ? ' active' : '');
+
+        const url = document.createElement('span');
+        url.className = 'proxy-item-url';
+        url.textContent = proxy;
+
+        const label = document.createElement('span');
+        label.className = 'proxy-item-label';
+        if (index === 0) {
+            const badge = document.createElement('span');
+            badge.className = 'proxy-item-badge';
+            badge.textContent = 'DEFAULT';
+            label.appendChild(badge);
+        }
+
+        const remove = document.createElement('button');
+        remove.className = 'proxy-item-remove';
+        remove.textContent = '\u00d7';
+        remove.title = 'Remove';
+        remove.addEventListener('click', (e) => {
+            e.stopPropagation();
+            proxies.splice(index, 1);
+            currentSettings.savedProxies = proxies;
+            if (currentSettings.proxy === proxy) {
+                currentSettings.proxy = proxies[0] || '';
+                proxyInput.value = currentSettings.proxy;
+            }
+            renderProxyList();
+            updateVpnButton();
+            window.electronAPI.toggleProxy({ proxyEnabled: currentSettings.proxyEnabled, proxy: currentSettings.proxy, savedProxies: proxies });
+        });
+
+        item.addEventListener('click', () => {
+            // Move to top (make default/active)
+            proxies.splice(index, 1);
+            proxies.unshift(proxy);
+            currentSettings.savedProxies = proxies;
+            currentSettings.proxy = proxy;
+            proxyInput.value = proxy;
+            renderProxyList();
+            updateVpnButton();
+            window.electronAPI.toggleProxy({ proxyEnabled: currentSettings.proxyEnabled, proxy: proxy, savedProxies: proxies });
+        });
+
+        item.appendChild(url);
+        item.appendChild(label);
+        item.appendChild(remove);
+        proxyListEl.appendChild(item);
+    });
+}
+
+// Add proxy to saved list
+function addProxy() {
+    const value = proxyInput.value.trim();
+    if (!value) return;
+    const proxies = currentSettings.savedProxies || [];
+    if (proxies.includes(value)) return;
+    proxies.unshift(value);
+    currentSettings.savedProxies = proxies;
+    currentSettings.proxy = value;
+    renderProxyList();
+    updateVpnButton();
+    window.electronAPI.toggleProxy({ proxyEnabled: currentSettings.proxyEnabled, proxy: value, savedProxies: proxies });
+}
+
+// Show a brief toast notification
+function showToast(message) {
+    let toast = document.getElementById('toast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'toast';
+        toast.className = 'toast';
+        document.body.appendChild(toast);
+    }
+    toast.textContent = message;
+    toast.classList.remove('toast-visible');
+    // force reflow to restart animation
+    void toast.offsetWidth;
+    toast.classList.add('toast-visible');
+    clearTimeout(toast._timeout);
+    toast._timeout = setTimeout(() => toast.classList.remove('toast-visible'), 2000);
 }
 
 // Setup Event Listeners
@@ -248,6 +389,17 @@ function setupEventListeners() {
     // Open folder button
     openFolderBtn.addEventListener('click', async () => {
         await window.electronAPI.openFolder();
+    });
+
+    // Change folder button
+    changeFolderBtn.addEventListener('click', async () => {
+        const result = await window.electronAPI.selectFolder();
+        if (result.success) {
+            currentSettings.downloadPath = result.path;
+            downloadPathInput.value = result.path;
+            await window.electronAPI.saveSettings(currentSettings);
+            showToast(`Folder: ${result.path}`);
+        }
     });
 
     // Exit button
@@ -285,17 +437,40 @@ function setupEventListeners() {
         updateFormatButtons('mp4');
     });
 
+    // VPN toggle button
+    vpnBtn.addEventListener('click', toggleVpn);
+
+    // SUB toggle button
+    subBtn.addEventListener('click', toggleSub);
+
+    // Language modal
+    langDownloadBtn.addEventListener('click', () => {
+        const langOptions = getSelectedLanguages();
+        langModal.classList.remove('active');
+        startDownload(pendingDownloadUrl, langOptions);
+        pendingDownloadUrl = '';
+    });
+    langCancelBtn.addEventListener('click', () => {
+        langModal.classList.remove('active');
+        pendingDownloadUrl = '';
+    });
+    closeLangModalBtn.addEventListener('click', () => {
+        langModal.classList.remove('active');
+        pendingDownloadUrl = '';
+    });
+    langModal.addEventListener('click', (e) => {
+        if (e.target === langModal) {
+            langModal.classList.remove('active');
+            pendingDownloadUrl = '';
+        }
+    });
+
+    // Add proxy button
+    addProxyBtn.addEventListener('click', addProxy);
+
     // App language — live preview
     appLangSelect.addEventListener('change', () => {
         applyTranslations(appLangSelect.value);
-    });
-
-    // Subtitle mode — show/hide embed sub-options and language selector
-    document.querySelectorAll('input[name="subtitleMode"]').forEach(radio => {
-        radio.addEventListener('change', () => {
-            subtitleEmbedOptions.classList.toggle('hidden', radio.value !== 'embed');
-            subtitleLangGroup.classList.toggle('hidden', radio.value === 'off');
-        });
     });
 
     // Clear terminal button
@@ -322,7 +497,9 @@ function setupIpcListeners() {
         lastLineIsProgress = false;
         updateDownloadButton();
 
-        if (result.success) {
+        if (result.cancelled) {
+            // cancelled — nothing to do
+        } else if (result.success) {
             setTimeout(clearTerminal, 1500);
         } else {
             appendToTerminal(`[SYSTEM] Download failed (exit code ${result.code})\n`);
@@ -332,6 +509,11 @@ function setupIpcListeners() {
 
 // Handle download
 async function handleDownload() {
+    if (isDownloading) {
+        await window.electronAPI.cancelDownload();
+        return;
+    }
+
     const url = urlInput.value.trim();
 
     if (!url) {
@@ -339,33 +521,136 @@ async function handleDownload() {
         return;
     }
 
-    if (isDownloading) {
-        appendToTerminal('[WARNING] A download is already in progress\n\n');
+    // If subtitles enabled + video format → show language picker
+    if (currentSettings.subtitlesEnabled && currentSettings.format === 'mp4') {
+        pendingDownloadUrl = url;
+        urlInput.value = '';
+        await showLanguagePicker(url);
         return;
     }
 
+    startDownload(url, null);
+}
+
+// Show language picker modal
+async function showLanguagePicker(url) {
+    langAudioList.innerHTML = '<div style="color:#52525b;font-size:12px;padding:8px;">Loading...</div>';
+    langSubList.innerHTML = '<div style="color:#52525b;font-size:12px;padding:8px;">Loading...</div>';
+    langModal.classList.add('active');
+
+    const result = await window.electronAPI.listLanguages(url);
+
+    if (!result.success) {
+        langModal.classList.remove('active');
+        appendToTerminal('[ERROR] Could not detect languages. Downloading with defaults...\n\n');
+        startDownload(url, null);
+        return;
+    }
+
+    // Only 1 audio track and ≤1 subtitle → skip picker, download directly
+    if (result.audio.length <= 1 && result.subtitles.length <= 1) {
+        langModal.classList.remove('active');
+        const langOptions = {
+            audio: result.audio.map(a => a.code),
+            subtitles: result.subtitles.map(s => s.code),
+        };
+        startDownload(url, langOptions);
+        return;
+    }
+
+    if (result.title) {
+        langModalTitle.textContent = result.title;
+    }
+
+    // Render audio languages
+    if (result.audio.length > 0) {
+        langAudioSection.style.display = '';
+        langAudioList.innerHTML = '';
+        result.audio.forEach(lang => {
+            const preselect = lang.code === 'de' || lang.code === 'original' || result.audio.length <= 2;
+            langAudioList.appendChild(createLangItem(lang.code, lang.name, false, preselect));
+        });
+    } else {
+        langAudioSection.style.display = 'none';
+    }
+
+    // Render subtitle languages
+    if (result.subtitles.length > 0) {
+        langSubSection.style.display = '';
+        langSubList.innerHTML = '';
+        result.subtitles.forEach(lang => {
+            const preselect = lang.code === 'de' || lang.code.startsWith('de');
+            langSubList.appendChild(createLangItem(lang.code, lang.name, lang.auto, preselect));
+        });
+    } else {
+        langSubSection.style.display = 'none';
+    }
+}
+
+// Create a language list item with checkbox
+function createLangItem(code, name, isAuto, checked) {
+    const item = document.createElement('label');
+    item.className = 'lang-item';
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.value = code;
+    checkbox.checked = checked;
+
+    const info = document.createElement('div');
+    info.className = 'lang-item-info';
+
+    const codeEl = document.createElement('span');
+    codeEl.className = 'lang-item-code';
+    codeEl.textContent = code;
+
+    const nameEl = document.createElement('span');
+    nameEl.className = 'lang-item-name';
+    nameEl.textContent = name !== code ? name : '';
+
+    info.appendChild(codeEl);
+    info.appendChild(nameEl);
+
+    if (isAuto) {
+        const tag = document.createElement('span');
+        tag.className = 'lang-item-tag auto';
+        tag.textContent = 'auto';
+        info.appendChild(tag);
+    }
+
+    item.appendChild(checkbox);
+    item.appendChild(info);
+    return item;
+}
+
+// Get selected languages from the picker
+function getSelectedLanguages() {
+    const audio = Array.from(langAudioList.querySelectorAll('input:checked')).map(cb => cb.value);
+    const subtitles = Array.from(langSubList.querySelectorAll('input:checked')).map(cb => cb.value);
+    return { audio, subtitles };
+}
+
+// Start the actual download
+function startDownload(url, langOptions) {
     isDownloading = true;
     updateDownloadButton();
-
-    await window.electronAPI.startDownload(url);
-
-    // Clear input after starting download
     urlInput.value = '';
+    window.electronAPI.startDownload(url, langOptions);
 }
 
 // Update download button state
 function updateDownloadButton() {
     const t = TRANSLATIONS[currentSettings.appLang || 'de'] || TRANSLATIONS.de;
     if (isDownloading) {
-        downloadBtn.textContent = t['btn.download.busy'];
-        downloadBtn.disabled = true;
-        downloadBtn.style.opacity = '0.6';
-        downloadBtn.style.cursor = 'not-allowed';
+        downloadBtn.textContent = t['btn.cancel'];
+        downloadBtn.classList.remove('btn-primary', 'btn-disabled');
+        downloadBtn.classList.add('btn-danger');
+        downloadBtn.disabled = false;
     } else {
         downloadBtn.textContent = t['btn.download'];
+        downloadBtn.classList.remove('btn-danger');
+        downloadBtn.classList.add('btn-primary');
         downloadBtn.disabled = false;
-        downloadBtn.style.opacity = '1';
-        downloadBtn.style.cursor = 'pointer';
     }
 }
 
@@ -441,19 +726,14 @@ async function handleSaveSettings() {
         audioQuality: audioQualitySelect.value,
         videoQuality: videoQualitySelect.value,
         embedThumbnail: embedThumbnailCheck.checked,
-        subtitleMode: (() => {
-            const mode = document.querySelector('input[name="subtitleMode"]:checked')?.value || 'off';
-            if (mode === 'embed') {
-                return document.querySelector('input[name="subtitleEmbedFormat"]:checked')?.value === 'mkv' ? 'embed-mkv' : 'embed';
-            }
-            return mode;
-        })(),
-        subtitleLang: subtitleLangSelect.value,
+        subtitlesEnabled: subtitlesEnabledCheck.checked,
         skipExisting: skipExistingCheck.checked,
         downloadDelay: downloadDelayInput.value || '0',
         notifyOnComplete: notifyOnCompleteCheck.checked,
         speedLimit: speedLimitInput.value.trim(),
         proxy: proxyInput.value.trim(),
+        proxyEnabled: !!currentSettings.proxyEnabled,
+        savedProxies: currentSettings.savedProxies || [],
         customArgs: customArgsInput.value.trim(),
         verbose: verboseCheck.checked,
         jsRuntime: jsRuntimeCheck.checked,
