@@ -1,6 +1,6 @@
 {
   "name": "yt-dlp-gui",
-  "version": "1.2.6",
+  "version": "1.2.7",
   "description": "GUI for yt-dlp with integrated terminal output",
   "main": "src/main.js",
   "scripts": {
