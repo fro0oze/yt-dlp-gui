@@ -41,8 +41,8 @@ const TRANSLATIONS = {
         'suffix.sec': 'sec',
         'label.notify': 'Benachrichtigung bei Abschluss',
         'hint.notify': 'Windows-Benachrichtigung wenn der Download fertig ist',
-        'label.clearBetween': 'Terminal zwischen Playlist-Einträgen leeren',
-        'hint.clearBetween': 'Terminal-Ausgabe vor jedem neuen Playlist-Eintrag leeren',
+        'label.clearBetween': 'Terminal automatisch leeren',
+        'hint.clearBetween': 'Terminal nach Downloads, Abbruch und zwischen Playlist-Einträgen leeren',
         'label.speedLimit': 'Geschwindigkeitslimit',
         'hint.speedLimit': 'Download-Bandbreite begrenzen',
         'placeholder.speedLimit': 'z.B. 5M, 500K — leer = unbegrenzt',
@@ -52,8 +52,8 @@ const TRANSLATIONS = {
         'label.customArgs': 'Eigene Argumente',
         'hint.customArgs': 'Zusätzliche yt-dlp Argumente (leerzeichen-getrennt)',
         'placeholder.customArgs': 'z.B. --playlist-start 1 --playlist-end 5',
-        'label.jsRuntime': 'Node.js JS-Runtime verwenden',
-        'hint.jsRuntime': 'Benötigt installiertes Node.js — verbessert Format-Erkennung',
+        'label.jsRuntime': 'Deno JS-Runtime verwenden',
+        'hint.jsRuntime': 'Wird automatisch heruntergeladen — verbessert Format- & Sprach-Erkennung',
         'label.verbose': 'Ausführliche Ausgabe',
         'hint.verbose': 'Detaillierte Debug-Infos — Netzwerk, Formate, Extractor',
         'btn.vpn': 'VPN',
@@ -99,8 +99,8 @@ const TRANSLATIONS = {
         'suffix.sec': 'sec',
         'label.notify': 'Notify on Completion',
         'hint.notify': 'Windows notification when download finishes',
-        'label.clearBetween': 'Clear Between Playlist Items',
-        'hint.clearBetween': 'Clear terminal output before each new playlist item',
+        'label.clearBetween': 'Auto-Clear Terminal',
+        'hint.clearBetween': 'Clear terminal after downloads, cancellation, and between playlist items',
         'label.speedLimit': 'Speed Limit',
         'hint.speedLimit': 'Limit download bandwidth',
         'placeholder.speedLimit': 'e.g. 5M, 500K — blank = unlimited',
@@ -110,8 +110,8 @@ const TRANSLATIONS = {
         'label.customArgs': 'Custom Arguments',
         'hint.customArgs': 'Additional yt-dlp arguments (space-separated)',
         'placeholder.customArgs': 'e.g., --playlist-start 1 --playlist-end 5',
-        'label.jsRuntime': 'Use Node.js JS Runtime',
-        'hint.jsRuntime': 'Requires Node.js installed — improves format extraction for some videos',
+        'label.jsRuntime': 'Use Deno JS Runtime',
+        'hint.jsRuntime': 'Auto-downloaded — improves format & language extraction',
         'label.verbose': 'Verbose Output',
         'hint.verbose': 'Show detailed debug info — network requests, format selection, extractor internals',
         'btn.vpn': 'VPN',
@@ -498,9 +498,9 @@ function setupIpcListeners() {
         updateDownloadButton();
 
         if (result.cancelled) {
-            // cancelled — nothing to do
+            if (currentSettings.clearBetweenItems !== false) setTimeout(clearTerminal, 1500);
         } else if (result.success) {
-            setTimeout(clearTerminal, 1500);
+            if (currentSettings.clearBetweenItems !== false) setTimeout(clearTerminal, 1500);
         } else {
             appendToTerminal(`[SYSTEM] Download failed (exit code ${result.code})\n`);
         }
@@ -689,10 +689,10 @@ function appendToTerminal(text) {
         });
         const lastNl = terminal.textContent.lastIndexOf('\n');
         const lastLine = terminal.textContent.substring(lastNl + 1);
-        lastLineIsProgress = /\[download\]\s+\d+\.?\d*%/.test(lastLine);
+        lastLineIsProgress = /\[(download|UPDATE)\].*\d+\.?\d*%/.test(lastLine);
     } else {
         // No \r: use progress-detection to overwrite the previous progress line
-        const isProgress = /\[download\]\s+\d+\.?\d*%/.test(normalized);
+        const isProgress = /\[(download|UPDATE)\].*\d+\.?\d*%/.test(normalized);
 
         if (isProgress && lastLineIsProgress) {
             const lastNl = terminal.textContent.lastIndexOf('\n');

@@ -34,7 +34,7 @@ const store = new Store({
 // ─── Paths ────────────────────────────────────────────────────────────────────
 
 let mainWindow;
-let ytdlpPath, ffmpegPath, ffprobePath, binDir;
+let ytdlpPath, ffmpegPath, ffprobePath, denoPath, binDir;
 
 function getPaths() {
   if (app.isPackaged) {
@@ -42,9 +42,10 @@ function getPaths() {
   } else {
     binDir = path.join(__dirname, '..', 'bin');
   }
-  ytdlpPath  = path.join(binDir, 'yt-dlp.exe');
-  ffmpegPath = path.join(binDir, 'ffmpeg.exe');
+  ytdlpPath   = path.join(binDir, 'yt-dlp.exe');
+  ffmpegPath  = path.join(binDir, 'ffmpeg.exe');
   ffprobePath = path.join(binDir, 'ffprobe.exe');
+  denoPath    = path.join(binDir, 'deno.exe');
 }
 
 // ─── Window ───────────────────────────────────────────────────────────────────
@@ -97,7 +98,7 @@ app.whenReady().then(async () => {
   const log = (msg) => logToTerminal(msg);
 
   const updater = createUpdater({ log, getWindow });
-  const deps    = createDependencies({ log, getWindow, binDir, ytdlpPath, ffmpegPath, ffprobePath });
+  const deps    = createDependencies({ log, getWindow, binDir, ytdlpPath, ffmpegPath, ffprobePath, denoPath });
 
   registerIpc({
     ipcMain, store, getWindow, ytdlpPath, binDir, log,

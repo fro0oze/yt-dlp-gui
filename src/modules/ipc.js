@@ -68,6 +68,7 @@ module.exports = function registerIpc({ ipcMain, store, getWindow, ytdlpPath, bi
       const settings = store.store;
       const args = ['--dump-single-json', '--no-download', '--no-playlist', '--no-warnings'];
       if (settings.proxyEnabled && settings.proxy && settings.proxy.trim()) args.push('--proxy', settings.proxy.trim());
+      if (settings.jsRuntime) args.push('--js-runtimes', 'deno');
       args.push(url);
 
       log('[SYSTEM] Detecting available languages...\n');
@@ -85,13 +86,16 @@ module.exports = function registerIpc({ ipcMain, store, getWindow, ytdlpPath, bi
           const info = JSON.parse(Buffer.concat(chunks).toString());
 
           // Audio languages from formats
+          const langNames = new Intl.DisplayNames(['en'], { type: 'language', fallback: 'code' });
           const audioLangs = new Map();
           (info.formats || []).forEach(f => {
             if (!f.acodec || f.acodec === 'none') return;
             const lang = f.language || null;
             if (!lang) return;
             if (!audioLangs.has(lang)) {
-              audioLangs.set(lang, { code: lang, name: f.format_note || lang });
+              let name = lang;
+              try { name = langNames.of(lang) || lang; } catch {}
+              audioLangs.set(lang, { code: lang, name });
             }
           });
           const audioResult = [{ code: 'original', name: 'Original' }, ...Array.from(audioLangs.values())];
@@ -171,12 +175,12 @@ module.exports = function registerIpc({ ipcMain, store, getWindow, ytdlpPath, bi
         // MKV mit gewählten Audio-Sprachen
         const audioLangs = langOptions.audio || [];
         // "original" = bestaudio without language filter
-        const langFilters = audioLangs.filter(l => l !== 'original').map(l => `bestaudio[language=${l}]`);
+        const specificLangs = audioLangs.filter(l => l !== 'original');
+        const langFilters = specificLangs.map(l => `bestaudio[language=${l}]`);
         const hasOriginal = audioLangs.includes('original');
 
         if (langFilters.length > 0 && hasOriginal) {
-          // Specific languages + original fallback
-          args.push('-f', `${videoFilter}+${langFilters.join('+')}/+bestaudio/${videoFilter}+bestaudio/best`);
+          args.push('-f', `${videoFilter}+${langFilters.join('+')}+bestaudio/${videoFilter}+bestaudio/best`);
           args.push('--audio-multistreams');
         } else if (langFilters.length > 1) {
           args.push('-f', `${videoFilter}+${langFilters.join('+')}/${videoFilter}+bestaudio/best`);
@@ -187,19 +191,29 @@ module.exports = function registerIpc({ ipcMain, store, getWindow, ytdlpPath, bi
           args.push('-f', `${videoFilter}+bestaudio/best`);
         }
         args.push('--merge-output-format', 'mkv');
+
+        // Build ffmpeg merge args: preserve language metadata on audio streams
+        const mergeArgs = ['-c:v copy', '-c:a aac'];
+        // Build ordered list: specific langs first, then original
+        const orderedLangs = [...specificLangs, ...(hasOriginal ? ['original'] : [])];
+        orderedLangs.forEach((lang, i) => {
+          if (lang !== 'original') {
+            mergeArgs.push(`-metadata:s:a:${i} language=${lang}`);
+          }
+        });
+        args.push('--ppa', `Merger+ffmpeg:${mergeArgs.join(' ')}`);
       } else {
         args.push('-f', `${videoFilter}+bestaudio/best`);
         args.push('--merge-output-format', 'mp4');
+        args.push('--ppa', 'Merger+ffmpeg:-c:v copy -c:a aac');
       }
-
-      args.push('--ppa', 'Merger+ffmpeg:-c:v copy -c:a aac');
       if (settings.embedThumbnail) args.push('--embed-thumbnail');
     }
 
     if (settings.subtitlesEnabled && langOptions) {
       const subLangs = langOptions.subtitles || [];
       if (subLangs.length > 0) {
-        args.push('--write-subs', '--write-auto-subs', '--embed-subs', '--sub-langs', subLangs.join(','));
+        args.push('--write-subs', '--write-auto-subs', '--embed-subs', '--convert-subs', 'srt', '--sub-langs', subLangs.join(','));
       }
     }
 
@@ -214,7 +228,7 @@ module.exports = function registerIpc({ ipcMain, store, getWindow, ytdlpPath, bi
       const customArgs = settings.customArgs.trim().match(/(?:[^\s"]+|"[^"]*")+/g) || [];
       args.push(...customArgs.map(a => a.replace(/^"|"$/g, '')));
     }
-    if (settings.jsRuntime) args.push('--js-runtimes', 'node');
+    if (settings.jsRuntime) args.push('--js-runtimes', 'deno');
     if (settings.verbose) args.push('--verbose');
 
     args.push('--ignore-errors');
@@ -256,14 +270,14 @@ module.exports = function registerIpc({ ipcMain, store, getWindow, ytdlpPath, bi
       const wasCancelled = activeDownload === null;
       activeDownload = null;
       if (wasCancelled) return;
-      // VTT-Dateien aufräumen nach erfolgreichem Einbetten
+      // Subtitle-Dateien aufräumen nach erfolgreichem Einbetten
       if (settings.subtitlesEnabled && (code === 0 || code === 1)) {
         try {
-          const vttFiles = fs.readdirSync(settings.downloadPath).filter(f => f.endsWith('.vtt'));
-          vttFiles.forEach(f => {
+          const subFiles = fs.readdirSync(settings.downloadPath).filter(f => f.endsWith('.vtt') || f.endsWith('.srt'));
+          subFiles.forEach(f => {
             try { fs.unlinkSync(path.join(settings.downloadPath, f)); } catch {}
           });
-          if (vttFiles.length > 0) log(`[SYSTEM] Cleaned up ${vttFiles.length} .vtt file(s)\n`);
+          if (subFiles.length > 0) log(`[SYSTEM] Cleaned up ${subFiles.length} subtitle file(s)\n`);
         } catch {}
       }
 

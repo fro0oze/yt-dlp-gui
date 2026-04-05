@@ -7,7 +7,7 @@ const axios = require('axios');
 
 const execFileAsync = promisify(execFile);
 
-module.exports = function createDependencies({ log, getWindow, binDir, ytdlpPath, ffmpegPath, ffprobePath }) {
+module.exports = function createDependencies({ log, getWindow, binDir, ytdlpPath, ffmpegPath, ffprobePath, denoPath }) {
 
   async function downloadFile(url, destPath, filename) {
     return new Promise(async (resolve, reject) => {
@@ -147,11 +147,67 @@ module.exports = function createDependencies({ log, getWindow, binDir, ytdlpPath
     }
   }
 
+  async function downloadDeno() {
+    try {
+      log('[SYSTEM] deno.exe not found. Downloading latest release...\n');
+
+      const releaseResponse = await axios.get(
+        'https://api.github.com/repos/denoland/deno/releases/latest',
+        { timeout: 10000 }
+      );
+
+      const asset = releaseResponse.data.assets.find(a => a.name === 'deno-x86_64-pc-windows-msvc.zip');
+      if (!asset) throw new Error('Deno Windows binary not found in latest release');
+
+      const tempPath = path.join(binDir, 'deno-temp.zip');
+      await downloadFile(asset.browser_download_url, tempPath, 'deno.zip');
+
+      log('[SYSTEM] Extracting Deno...\n');
+
+      let sevenZipPath;
+      if (app.isPackaged) {
+        sevenZipPath = path.join(process.resourcesPath, 'node_modules', '7zip-bin', 'win', 'x64', '7za.exe');
+      } else {
+        sevenZipPath = path.join(__dirname, '..', '..', 'node_modules', '7zip-bin', 'win', 'x64', '7za.exe');
+      }
+
+      if (!fs.existsSync(sevenZipPath)) throw new Error(`7za.exe not found at: ${sevenZipPath}`);
+
+      try {
+        const { stdout, stderr } = await execFileAsync(sevenZipPath, ['e', tempPath, `-o${binDir}`, 'deno.exe', '-y']);
+        if (stdout) log(stdout);
+        if (stderr) log(stderr);
+      } catch (execError) {
+        log(`[ERROR] Extraction error: ${execError.message}\n`);
+        throw execError;
+      }
+
+      if (!fs.existsSync(denoPath)) throw new Error('deno.exe not found after extraction');
+
+      log('[SUCCESS] Deno installed!\n');
+
+      try {
+        fs.unlinkSync(tempPath);
+        log('[SYSTEM] Cleanup complete!\n\n');
+      } catch (cleanupErr) {
+        log(`[WARNING] Cleanup failed: ${cleanupErr.message}\n\n`);
+      }
+
+      return true;
+
+    } catch (error) {
+      log(`[ERROR] Failed to download/extract Deno: ${error.message}\n`);
+      log(`[ERROR] Stack trace:\n${error.stack}\n\n`);
+      return false;
+    }
+  }
+
   function showManualDownloadDialog() {
     const ytdlpUrl = 'https://github.com/yt-dlp/yt-dlp/releases/latest';
     const ffmpegUrl = 'https://www.gyan.dev/ffmpeg/builds/ffmpeg-git-essentials.7z';
+    const denoUrl = 'https://github.com/denoland/deno/releases/latest';
 
-    clipboard.writeText(`${ytdlpUrl}\n${ffmpegUrl}`);
+    clipboard.writeText(`${ytdlpUrl}\n${ffmpegUrl}\n${denoUrl}`);
 
     const response = dialog.showMessageBoxSync(getWindow(), {
       type: 'error',
@@ -161,15 +217,17 @@ module.exports = function createDependencies({ log, getWindow, binDir, ytdlpPath
         `Please download manually:\n\n` +
         `1. yt-dlp.exe:\n${ytdlpUrl}\n\n` +
         `2. FFmpeg essentials:\n${ffmpegUrl}\n\n` +
-        `Extract and place ffmpeg.exe & ffprobe.exe in:\n${binDir}\n\n` +
+        `3. Deno:\n${denoUrl}\n\n` +
+        `Extract and place binaries in:\n${binDir}\n\n` +
         `(URLs copied to clipboard)`,
-      buttons: ['Open yt-dlp Page', 'Open FFmpeg Page', 'Exit'],
+      buttons: ['Open yt-dlp Page', 'Open FFmpeg Page', 'Open Deno Page', 'Exit'],
       defaultId: 0,
-      cancelId: 2
+      cancelId: 3
     });
 
     if (response === 0) shell.openExternal(ytdlpUrl);
     else if (response === 1) shell.openExternal(ffmpegUrl);
+    else if (response === 2) shell.openExternal(denoUrl);
 
     app.quit();
   }
@@ -179,11 +237,13 @@ module.exports = function createDependencies({ log, getWindow, binDir, ytdlpPath
 
     let ytdlpOk = fs.existsSync(ytdlpPath);
     let ffmpegOk = fs.existsSync(ffmpegPath) && fs.existsSync(ffprobePath);
+    let denoOk = fs.existsSync(denoPath);
 
     if (!ytdlpOk) ytdlpOk = await downloadYtDlp();
     if (!ffmpegOk) ffmpegOk = await downloadFFmpeg();
+    if (!denoOk) denoOk = await downloadDeno();
 
-    if (!ytdlpOk || !ffmpegOk) {
+    if (!ytdlpOk || !ffmpegOk || !denoOk) {
       showManualDownloadDialog();
       return false;
     }
