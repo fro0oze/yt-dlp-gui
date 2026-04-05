@@ -11,14 +11,15 @@ A modern Electron-based GUI for [yt-dlp](https://github.com/yt-dlp/yt-dlp) — d
 
 **[→ Latest Release](https://github.com/fro0oze/yt-dlp-gui/releases/latest)**
 
-Just download and run the `.exe` installer. No setup needed — yt-dlp and FFmpeg are downloaded automatically on first launch.
+Just download and run the `.exe` installer. No setup needed — yt-dlp, FFmpeg and Deno are downloaded automatically on first launch.
 
 ---
 
 ## Features
 
 - 🎵 **MP3 / MP4** — Audio extraction (128/192/320 kbps) or video download with quality selection
-- 📺 **Subtitles** — Download separately or embed into MP4/MKV
+- 📺 **Subtitles** — Embed subtitles directly into MKV with language selection
+- 🔊 **Multi-Audio** — Select and embed multiple audio languages into MKV
 - 🖼️ **Thumbnail embedding** — Embed cover art into MP3/MP4
 - ⚡ **Speed limit & download delay** — Control bandwidth and playlist pacing
 - 🔁 **Skip existing files** — No duplicate downloads
@@ -27,7 +28,7 @@ Just download and run the `.exe` installer. No setup needed — yt-dlp and FFmpe
 - 🔔 **Desktop notifications** — Get notified when downloads complete
 - 🌍 **German / English UI**
 - 🔄 **Auto-updates** — Both the app and yt-dlp update automatically
-- 📦 **Self-contained** — yt-dlp and FFmpeg are auto-downloaded on first run
+- 📦 **Self-contained** — yt-dlp, FFmpeg and Deno are auto-downloaded on first run
 
 ---
 
@@ -50,15 +51,14 @@ All settings (download path, quality, subtitles, proxy, etc.) are accessible via
 | Audio Quality | 128 / 192 / 320 kbps |
 | Video Quality | Best / 1080p / 720p / 480p / 360p |
 | Embed Thumbnail | Embeds cover art into the file |
-| Subtitles | Off / Separate file / Embedded (MP4 or MKV) |
-| Subtitle Language | e.g. `de`, `en`, `fr` |
+| Subtitles | Enable to select audio & subtitle languages per download (MKV) |
 | Skip Existing | Skips files already downloaded |
 | Download Delay | Seconds to wait between playlist items |
 | Speed Limit | e.g. `1M`, `500K` |
 | Proxy | e.g. `http://proxy:8080` |
 | Custom Arguments | Any additional yt-dlp flags |
 | Verbose Mode | Shows full yt-dlp debug output |
-| Node.js JS Runtime | Enables Node.js for YouTube format extraction |
+| Deno JS Runtime | Enables Deno for improved format & language extraction |
 
 ---
 
@@ -68,6 +68,7 @@ On first launch, the app automatically downloads:
 
 - **yt-dlp.exe** — from the official [yt-dlp GitHub releases](https://github.com/yt-dlp/yt-dlp/releases/latest)
 - **ffmpeg.exe + ffprobe.exe** — from [gyan.dev FFmpeg essentials](https://www.gyan.dev/ffmpeg/builds/)
+- **deno.exe** — from the official [Deno GitHub releases](https://github.com/denoland/deno/releases/latest)
 
 Binaries are stored in `%APPDATA%\YouTube Downloader\bin\` and persist across app updates.
 
@@ -135,7 +136,7 @@ yt-dlp-gui/
 │   ├── main.js                  # Entry point: window, lifecycle, module wiring
 │   ├── preload.js               # IPC bridge
 │   ├── modules/
-│   │   ├── dependencies.js      # yt-dlp & FFmpeg download/management
+│   │   ├── dependencies.js      # yt-dlp, FFmpeg & Deno download/management
 │   │   ├── ipc.js               # All IPC handlers (download, settings, folder)
 │   │   └── updater.js           # electron-updater setup & logic
 │   └── renderer/
