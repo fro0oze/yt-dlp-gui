@@ -407,9 +407,17 @@ app.get('/api/settings', (req, res) => {
 });
 
 app.post('/api/settings', (req, res) => {
-  settings = { ...settings, ...req.body };
+  const { apiKey, ...rest } = req.body;
+  settings = { ...settings, ...rest };
   saveSettings(settings);
   res.json({ success: true });
+});
+
+app.post('/api/settings/regenerate-key', (req, res) => {
+  settings.apiKey = generateApiKey();
+  saveSettings(settings);
+  console.log(`New API key generated: ${settings.apiKey}`);
+  res.json({ success: true, apiKey: settings.apiKey });
 });
 
 app.post('/api/toggle-proxy', (req, res) => {
