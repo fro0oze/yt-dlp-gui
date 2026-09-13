@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import Home from './screens/Home.jsx';
 import Queue from './screens/Queue.jsx';
+import Settings from './screens/Settings.jsx';
 import TerminalSheet from './components/TerminalSheet.jsx';
 
 export default function App() {
@@ -23,8 +24,15 @@ export default function App() {
         >
           Queue
         </button>
+        <button
+          type="button"
+          onClick={() => setView('settings')}
+          className={view === 'settings' ? 'text-text-0 font-semibold' : 'text-text-2'}
+        >
+          Settings
+        </button>
       </nav>
-      {view === 'home' ? <Home /> : <Queue />}
+      {view === 'home' ? <Home /> : view === 'queue' ? <Queue /> : <Settings />}
       <TerminalSheet />
     </div>
   );
