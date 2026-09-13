@@ -64,6 +64,31 @@ export default function Settings() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['cookies-status'] }),
   });
 
+  const [proxyInput, setProxyInput] = useState('');
+
+  const toggleProxy = useMutation({
+    mutationFn: (body) => apiFetch('/toggle-proxy', { method: 'POST', body: JSON.stringify(body) }),
+    onSuccess: (_data, body) => {
+      queryClient.setQueryData(['settings'], (prev) => ({ ...prev, ...body }));
+    },
+  });
+
+  function addProxy() {
+    const value = proxyInput.trim();
+    if (!value) return;
+    const existing = s.savedProxies || [];
+    if (existing.includes(value)) return;
+    const savedProxies = [value, ...existing];
+    setProxyInput('');
+    toggleProxy.mutate({ proxyEnabled: s.proxyEnabled, proxy: value, savedProxies });
+  }
+
+  function removeProxy(value) {
+    const savedProxies = (s.savedProxies || []).filter((p) => p !== value);
+    const proxy = s.proxy === value ? '' : s.proxy;
+    toggleProxy.mutate({ proxyEnabled: s.proxyEnabled, proxy, savedProxies });
+  }
+
   function handleCookiesFile(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -155,6 +180,35 @@ export default function Settings() {
               Entfernen
             </button>
           )}
+        </div>
+      </section>
+
+      <section>
+        <h2 className="text-text-0 font-semibold mb-2">Proxy</h2>
+        <ToggleRow
+          label="Proxy verwenden"
+          checked={s.proxyEnabled}
+          onChange={(v) => toggleProxy.mutate({ proxyEnabled: v, proxy: s.proxy, savedProxies: s.savedProxies })}
+        />
+        <div className="flex gap-2 mt-2">
+          <input
+            type="text"
+            value={proxyInput}
+            onChange={(e) => setProxyInput(e.target.value)}
+            placeholder="socks5://user:pass@127.0.0.1:1080"
+            className="flex-1 bg-bg-1 text-text-0 px-3 py-2 rounded"
+          />
+          <button type="button" onClick={addProxy} className="bg-bg-1 text-text-0 px-4 py-2 rounded">
+            +
+          </button>
+        </div>
+        <div className="flex flex-col gap-1 mt-2">
+          {(s.savedProxies || []).map((p) => (
+            <div key={p} className="flex justify-between items-center bg-bg-1 px-3 py-2 rounded">
+              <span className={p === s.proxy ? 'text-text-0' : 'text-text-2'}>{p}</span>
+              <button type="button" onClick={() => removeProxy(p)} className="text-danger">×</button>
+            </div>
+          ))}
         </div>
       </section>
     </div>
