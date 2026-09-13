@@ -87,6 +87,10 @@ export default function Playlists() {
     },
   });
 
+  const visibleEntries = entriesQuery.data && entriesQuery.data.success
+    ? entriesQuery.data.entries.filter((e) => String(e.title ?? '').toLowerCase().includes(filterText.toLowerCase()))
+    : [];
+
   if (savedQuery.isPending) {
     return <div className="p-4 text-text-2">Lade Playlists...</div>;
   }
@@ -141,7 +145,11 @@ export default function Playlists() {
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
             <button type="button" onClick={backToList} className="text-text-2">‹ Zurück</button>
-            <span className="text-text-0 font-semibold truncate">{activePlaylist.name}</span>
+            <span className="text-text-0 font-semibold truncate">
+              {entriesQuery.data && entriesQuery.data.success
+                ? `${entriesQuery.data.title} (${entriesQuery.data.count})`
+                : activePlaylist.name}
+            </span>
           </div>
 
           {entriesQuery.isPending && <p className="text-text-2">Lade Einträge...</p>}
@@ -153,7 +161,7 @@ export default function Playlists() {
           {entriesQuery.data && entriesQuery.data.success && (
             <>
               <div className="flex gap-2 items-center">
-                <button type="button" onClick={() => selectAll(entriesQuery.data.entries)} className="text-text-2">Alle</button>
+                <button type="button" onClick={() => selectAll(visibleEntries)} className="text-text-2">Alle</button>
                 <button type="button" onClick={selectNone} className="text-text-2">Keine</button>
                 <input
                   type="text"
@@ -165,14 +173,12 @@ export default function Playlists() {
                 <span className="text-text-2">{selectedIds.size} ausgewählt</span>
               </div>
               <div className="flex flex-col gap-1 max-h-96 overflow-y-auto">
-                {entriesQuery.data.entries
-                  .filter((e) => e.title.toLowerCase().includes(filterText.toLowerCase()))
-                  .map((e) => (
-                    <label key={e.id} className="flex items-center gap-2 bg-bg-1 px-3 py-2 rounded">
-                      <input type="checkbox" checked={selectedIds.has(e.id)} onChange={() => toggleEntry(e.id)} />
-                      <span className="text-text-0 truncate flex-1">{e.title}</span>
-                    </label>
-                  ))}
+                {visibleEntries.map((e) => (
+                  <label key={e.id} className="flex items-center gap-2 bg-bg-1 px-3 py-2 rounded">
+                    <input type="checkbox" checked={selectedIds.has(e.id)} onChange={() => toggleEntry(e.id)} />
+                    <span className="text-text-0 truncate flex-1">{e.title}</span>
+                  </label>
+                ))}
               </div>
               <button
                 type="button"
@@ -183,6 +189,7 @@ export default function Playlists() {
                 {addSelectedToQueue.isPending ? 'Wird hinzugefügt...' : `${selectedIds.size} zur Queue hinzufügen`}
               </button>
               {addSelectedToQueue.isError && <p className="text-danger">{addSelectedToQueue.error.message}</p>}
+              {addSelectedToQueue.isSuccess && <p className="text-success">{addSelectedToQueue.data.queued} zur Queue hinzugefügt.</p>}
             </>
           )}
         </div>
