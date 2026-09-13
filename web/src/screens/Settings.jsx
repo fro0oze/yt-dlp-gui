@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiFetch } from '../api/client.js';
+import { apiFetch, setStoredKey } from '../api/client.js';
 
 function useSettingsQuery() {
   return useQuery({ queryKey: ['settings'], queryFn: () => apiFetch('/settings') });
@@ -87,6 +87,26 @@ export default function Settings() {
     const savedProxies = (s.savedProxies || []).filter((p) => p !== value);
     const proxy = s.proxy === value ? '' : s.proxy;
     toggleProxy.mutate({ proxyEnabled: s.proxyEnabled, proxy, savedProxies });
+  }
+
+  const [showKey, setShowKey] = useState(false);
+
+  const regenerateKey = useMutation({
+    mutationFn: () => apiFetch('/settings/regenerate-key', { method: 'POST' }),
+    onSuccess: (data) => {
+      setStoredKey(data.apiKey);
+      queryClient.setQueryData(['settings'], (prev) => ({ ...prev, apiKey: data.apiKey }));
+    },
+  });
+
+  const updateYtDlp = useMutation({
+    mutationFn: () => apiFetch('/update-ytdlp', { method: 'POST' }),
+  });
+
+  function handleRegenerateKey() {
+    if (window.confirm('Neuen API-Key generieren? Der alte Key wird sofort ungültig.')) {
+      regenerateKey.mutate();
+    }
   }
 
   function handleCookiesFile(e) {
@@ -210,6 +230,46 @@ export default function Settings() {
             </div>
           ))}
         </div>
+      </section>
+
+      <section>
+        <h2 className="text-text-0 font-semibold mb-2">API-Key</h2>
+        <p className="text-text-2 text-sm">Für iOS Shortcuts, Tasker & Co. — als <code>Authorization: Bearer &lt;Key&gt;</code> Header mitschicken.</p>
+        <div className="flex gap-2 mt-2 items-center">
+          <code className="flex-1 bg-bg-1 text-text-0 px-3 py-2 rounded overflow-x-auto whitespace-nowrap">
+            {showKey ? s.apiKey : '••••••••••••••••••••••••••••••••••••••••••••••••'}
+          </code>
+          <button type="button" onClick={() => setShowKey((v) => !v)} className="bg-bg-1 text-text-0 px-3 py-2 rounded">
+            {showKey ? 'Verbergen' : 'Anzeigen'}
+          </button>
+          <button
+            type="button"
+            onClick={() => navigator.clipboard.writeText(s.apiKey)}
+            className="bg-bg-1 text-text-0 px-3 py-2 rounded"
+          >
+            Kopieren
+          </button>
+        </div>
+        <button
+          type="button"
+          onClick={handleRegenerateKey}
+          disabled={regenerateKey.isPending}
+          className="mt-2 bg-danger text-text-0 px-4 py-2 rounded disabled:opacity-50"
+        >
+          {regenerateKey.isPending ? 'Wird erneuert...' : 'Neu generieren'}
+        </button>
+      </section>
+
+      <section>
+        <h2 className="text-text-0 font-semibold mb-2">Wartung</h2>
+        <button
+          type="button"
+          onClick={() => updateYtDlp.mutate()}
+          disabled={updateYtDlp.isPending}
+          className="bg-bg-1 text-text-0 px-4 py-2 rounded disabled:opacity-50"
+        >
+          {updateYtDlp.isPending ? 'Prüfe...' : 'yt-dlp aktualisieren'}
+        </button>
       </section>
     </div>
   );

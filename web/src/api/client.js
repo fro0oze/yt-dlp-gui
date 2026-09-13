@@ -4,6 +4,10 @@ function getStoredKey() {
   return localStorage.getItem(API_KEY_STORAGE) || '';
 }
 
+export function setStoredKey(key) {
+  localStorage.setItem(API_KEY_STORAGE, key);
+}
+
 export async function apiFetch(path, options = {}) {
   const opts = { ...options, headers: { 'Content-Type': 'application/json', ...(options.headers || {}) } };
   const key = getStoredKey();
