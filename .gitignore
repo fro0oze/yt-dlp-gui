@@ -5,6 +5,7 @@ dist/
 .idea/
 .venv/
 .claude/
+.superpowers/
 data/settings.json
 data/cookies.txt
 downloads/
