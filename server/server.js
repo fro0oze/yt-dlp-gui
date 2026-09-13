@@ -514,11 +514,14 @@ app.get('/api/playlist-info', (req, res) => {
 
   const proc = spawn(YTDLP_PATH, args);
   const chunks = [];
+  let responded = false;
 
   proc.stdout.on('data', d => chunks.push(d));
   proc.stderr.on('data', () => {});
 
   proc.on('close', (code) => {
+    if (responded) return;
+    responded = true;
     if (code !== 0) return res.json({ success: false, error: 'fetch_failed' });
     try {
       const data = JSON.parse(Buffer.concat(chunks).toString());
@@ -539,7 +542,11 @@ app.get('/api/playlist-info', (req, res) => {
     }
   });
 
-  proc.on('error', () => res.json({ success: false, error: 'process_error' }));
+  proc.on('error', () => {
+    if (responded) return;
+    responded = true;
+    res.json({ success: false, error: 'process_error' });
+  });
 });
 
 // ─── API: Saved Playlists ────────────────────────────────────────────────────
