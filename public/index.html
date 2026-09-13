@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="YT Downloader">
+    <meta name="theme-color" content="#0d0d0f">
+    <title>YouTube Downloader</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>YouTube Downloader</h1>
+            <button id="settingsBtn" class="btn btn-secondary" data-i18n="btn.settings">Einstellungen</button>
+        </div>
+
+        <!-- App Layout: left (download + tabs) | right (terminal) -->
+        <div class="app-layout">
+
+            <!-- Left Panel -->
+            <div class="app-left">
+
+                <!-- Download Section — prominent -->
+                <div class="download-card">
+                    <div class="input-group">
+                        <input
+                            type="text"
+                            id="urlInput"
+                            data-i18n-placeholder="url.placeholder"
+                            data-i18n-aria="url.placeholder"
+                            placeholder="URL eingeben..."
+                            autocomplete="off"
+                        >
+                        <div class="btn-group">
+                            <button id="mp3Btn" class="btn btn-format" data-format="mp3" aria-pressed="false">MP3</button>
+                            <button id="mp4Btn" class="btn btn-format" data-format="mp4" aria-pressed="false">MP4</button>
+                        </div>
+                        <div class="btn-group-divider"></div>
+                        <div class="btn-group">
+                            <button id="vpnBtn" class="btn btn-format btn-vpn" data-i18n="btn.vpn" aria-pressed="false">VPN</button>
+                            <button id="subBtn" class="btn btn-format btn-sub" aria-pressed="false">SUB</button>
+                            <button id="downloadBtn" class="btn btn-primary" data-i18n="btn.download">Download</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab Bar -->
+                <div class="tab-bar" role="tablist">
+                    <button class="tab-btn active" data-tab="queue" role="tab" id="tabbtn-queue" aria-selected="true" aria-controls="tab-queue">
+                        Queue
+                        <span id="queueBadge" class="tab-badge hidden"></span>
+                    </button>
+                    <button class="tab-btn" data-tab="yt" role="tab" id="tabbtn-yt" aria-selected="false" aria-controls="tab-yt">YouTube</button>
+                </div>
+
+                <!-- Tab Panels -->
+                <div class="tab-panels">
+
+                    <!-- Queue Tab -->
+                    <div class="tab-panel active" id="tab-queue" role="tabpanel" aria-labelledby="tabbtn-queue">
+                        <div class="queue-input-section">
+                            <div class="queue-input-row">
+                                <input type="text" id="queueUrlInput" data-i18n-placeholder="placeholder.queueUrl" data-i18n-aria="aria.queueUrl" placeholder="URL...">
+                                <input type="text" id="queueNameInput" class="queue-name-input" data-i18n-placeholder="placeholder.queueName" data-i18n-aria="aria.queueName" placeholder="Name (optional)">
+                                <button id="addToQueueBtn" class="btn btn-secondary btn-icon" data-i18n-title="aria.addToQueue" data-i18n-aria="aria.addToQueue" title="Hinzufügen">+</button>
+                            </div>
+                        </div>
+                        <div id="queueList" class="queue-list"></div>
+                        <div class="queue-footer">
+                            <div class="queue-footer-left">
+                                <input type="checkbox" id="queueSelectAllCb" class="queue-select-all-cb" aria-label="Alle auswählen">
+                                <span id="queueCountEl" class="queue-count">0 Einträge</span>
+                            </div>
+                            <div class="queue-footer-actions">
+                                <button id="queueRemoveSelectedBtn" class="btn btn-secondary btn-sm hidden">Entfernen</button>
+                                <button id="startQueueBtn" class="btn btn-primary btn-sm">Downloads starten</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- YouTube Playlists Tab -->
+                    <div class="tab-panel" id="tab-yt" role="tabpanel" aria-labelledby="tabbtn-yt">
+                        <!-- List View -->
+                        <div id="ytListView" class="playlist-tab-body">
+                            <div id="ytPlaylistList" class="playlist-group-list"></div>
+                            <div class="playlist-add-row">
+                                <input type="text" id="ytPlaylistInput" data-i18n-placeholder="placeholder.ytPlaylist" data-i18n-aria="aria.ytPlaylist" placeholder="Playlist URL...">
+                                <button id="saveYtPlaylistBtn" class="btn btn-secondary btn-icon" data-i18n-title="aria.savePlaylist" data-i18n-aria="aria.savePlaylist" title="Speichern">★</button>
+                            </div>
+                        </div>
+                        <!-- Entries View -->
+                        <div id="ytEntriesView" class="entries-view hidden">
+                            <div class="entries-header">
+                                <button id="ytBackBtn" class="btn-clear">‹ Zurück</button>
+                                <span id="ytEntriesTitle" class="entries-title"></span>
+                            </div>
+                            <div class="entries-actions">
+                                <button id="ytSelectAll" class="btn-clear">Alle</button>
+                                <button id="ytSelectNone" class="btn-clear">Keine</button>
+                                <input type="text" id="ytFilter" class="playlist-filter-input" data-i18n-placeholder="placeholder.ytFilter" data-i18n-aria="aria.ytFilter" placeholder="Filtern...">
+                                <span id="ytSelectedCount" class="selected-count"></span>
+                                <button id="ytAddToQueue" class="btn btn-secondary btn-sm">+ Queue</button>
+                            </div>
+                            <div id="ytEntriesList" class="playlist-video-list"></div>
+                        </div>
+                    </div>
+
+                </div><!-- /tab-panels -->
+
+            </div><!-- /app-left -->
+
+            <!-- Resize Handle -->
+            <div class="resize-handle" id="resizeHandle"></div>
+
+            <!-- Right Panel: Terminal -->
+            <div class="app-right">
+                <div class="terminal-section">
+                    <div class="terminal-header">
+                        <span data-i18n="terminal.title">Terminal</span>
+                        <button id="clearTerminalBtn" class="btn-clear" data-i18n="btn.clear">Leeren</button>
+                    </div>
+                    <div id="terminal" class="terminal"></div>
+                </div>
+            </div>
+
+        </div><!-- /app-layout -->
+    </div>
+
+    <!-- Language Picker Modal -->
+    <div id="langModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="langModalTitle">
+        <div class="modal-content modal-content-sm">
+            <div class="modal-header">
+                <h2 id="langModalTitle">Sprachen wählen</h2>
+                <button id="closeLangModalBtn" class="close-btn" data-i18n-aria="aria.close" aria-label="Schließen">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="langAudioSection">
+                    <div class="settings-section-label">Audio</div>
+                    <div id="langAudioList" class="lang-list"></div>
+                </div>
+                <div id="langSubSection">
+                    <div class="settings-section-label">Untertitel</div>
+                    <div id="langSubList" class="lang-list"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <div></div>
+                <div class="modal-footer-right">
+                    <button id="langDownloadBtn" class="btn btn-primary">Download</button>
+                    <button id="langCancelBtn" class="btn btn-secondary">Abbrechen</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="settingsModalTitle">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="settingsModalTitle" data-i18n="modal.title">Einstellungen</h2>
+                <button id="closeModalBtn" class="close-btn" data-i18n-aria="aria.close" aria-label="Schließen">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="settings-section-label" data-i18n="section.audio">Audio</div>
+                <div class="form-group">
+                    <label for="audioQuality" data-i18n="label.audioQuality">Audioqualität</label>
+                    <select id="audioQuality">
+                        <option value="128" data-i18n="option.audio128">128 kbps — Klein</option>
+                        <option value="192" data-i18n="option.audio192">192 kbps — Ausgewogen</option>
+                        <option value="320" data-i18n="option.audio320">320 kbps — Beste Qualität</option>
+                    </select>
+                    <small class="form-hint" data-i18n="hint.audioQuality">Gilt für MP3-Downloads</small>
+                </div>
+                <div class="form-group">
+                    <div class="toggle-row">
+                        <div class="toggle-info">
+                            <span class="toggle-label" id="lbl-embedThumbnail" data-i18n="label.embedThumbnail">Thumbnail einbetten</span>
+                            <small class="form-hint" data-i18n="hint.embedThumbnail">Coverbild einbetten</small>
+                        </div>
+                        <label class="toggle"><input type="checkbox" id="embedThumbnail" aria-labelledby="lbl-embedThumbnail"><span class="toggle-slider"></span></label>
+                    </div>
+                </div>
+                <div class="settings-section-label" data-i18n="section.video">Video</div>
+                <div class="form-group">
+                    <label for="videoQuality" data-i18n="label.videoQuality">Videoqualität</label>
+                    <select id="videoQuality">
+                        <option value="best" data-i18n="option.videoBest">Beste verfügbar</option>
+                        <option value="1080">1080p</option>
+                        <option value="720">720p</option>
+                        <option value="480">480p</option>
+                    </select>
+                    <small class="form-hint" data-i18n="hint.videoQuality">Gilt für MP4-Downloads</small>
+                </div>
+                <div class="form-group">
+                    <div class="toggle-row">
+                        <div class="toggle-info">
+                            <span class="toggle-label" id="lbl-subtitlesEnabled" data-i18n="label.subtitles">Untertitel herunterladen</span>
+                            <small class="form-hint" data-i18n="hint.subtitles">Eingebettet in MKV</small>
+                        </div>
+                        <label class="toggle"><input type="checkbox" id="subtitlesEnabled" aria-labelledby="lbl-subtitlesEnabled"><span class="toggle-slider"></span></label>
+                    </div>
+                </div>
+                <div class="settings-section-label" data-i18n="section.general">Allgemein</div>
+                <div class="form-group">
+                    <label data-i18n="label.appLang">App-Sprache</label>
+                    <select id="appLang">
+                        <option value="de">Deutsch</option>
+                        <option value="en">English</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <div class="toggle-row">
+                        <div class="toggle-info">
+                            <span class="toggle-label" id="lbl-skipExisting" data-i18n="label.skipExisting">Bestehende überspringen</span>
+                            <small class="form-hint" data-i18n="hint.skipExisting">Bereits heruntergeladene Dateien überspringen</small>
+                        </div>
+                        <label class="toggle"><input type="checkbox" id="skipExisting" aria-labelledby="lbl-skipExisting"><span class="toggle-slider"></span></label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="downloadDelay" data-i18n="label.downloadDelay">Pause zwischen Downloads</label>
+                    <div class="input-with-suffix">
+                        <input type="number" id="downloadDelay" min="0" max="120" placeholder="0">
+                        <span class="input-suffix" data-i18n="suffix.sec">sec</span>
+                    </div>
+                    <small class="form-hint" data-i18n="hint.downloadDelay">0 = deaktiviert</small>
+                </div>
+                <div class="form-group">
+                    <div class="toggle-row">
+                        <div class="toggle-info">
+                            <span class="toggle-label" id="lbl-clearBetweenItems" data-i18n="label.clearBetween">Terminal auto-leeren</span>
+                            <small class="form-hint" data-i18n="hint.clearBetween">Nach Downloads und zwischen Playlist-Einträgen</small>
+                        </div>
+                        <label class="toggle"><input type="checkbox" id="clearBetweenItems" aria-labelledby="lbl-clearBetweenItems"><span class="toggle-slider"></span></label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="speedLimit" data-i18n="label.speedLimit">Geschwindigkeitslimit</label>
+                    <input type="text" id="speedLimit" data-i18n-placeholder="placeholder.speedLimit" placeholder="z.B. 5M, 500K — leer = unbegrenzt">
+                    <small class="form-hint" data-i18n="hint.speedLimit">Download-Bandbreite begrenzen</small>
+                </div>
+                <div class="settings-section-label" data-i18n="section.advanced">Erweitert</div>
+                <div class="form-group">
+                    <label for="proxyInput" data-i18n="label.proxy">Proxy-Server</label>
+                    <div class="proxy-input-row">
+                        <input type="text" id="proxyInput" placeholder="socks5://user:pass@127.0.0.1:1080">
+                        <button id="addProxyBtn" class="btn btn-secondary btn-icon" data-i18n-title="aria.addProxy" data-i18n-aria="aria.addProxy" title="Hinzufügen">+</button>
+                    </div>
+                    <small class="form-hint" data-i18n="hint.proxy">Proxy nutzen um die eigene IP zu verbergen</small>
+                    <div id="proxyList" class="proxy-list"></div>
+                </div>
+                <div class="form-group">
+                    <label for="customArgs" data-i18n="label.customArgs">Eigene Argumente</label>
+                    <input type="text" id="customArgs" data-i18n-placeholder="placeholder.customArgs" placeholder="z.B. --playlist-start 1 --playlist-end 5">
+                    <small class="form-hint" data-i18n="hint.customArgs">Zusätzliche yt-dlp Argumente</small>
+                </div>
+                <div class="form-group">
+                    <div class="toggle-row">
+                        <div class="toggle-info">
+                            <span class="toggle-label" id="lbl-jsRuntime" data-i18n="label.jsRuntime">Deno JS-Runtime</span>
+                            <small class="form-hint" data-i18n="hint.jsRuntime">Verbessert Format- & Sprach-Erkennung</small>
+                        </div>
+                        <label class="toggle"><input type="checkbox" id="jsRuntime" aria-labelledby="lbl-jsRuntime"><span class="toggle-slider"></span></label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="toggle-row">
+                        <div class="toggle-info">
+                            <span class="toggle-label" id="lbl-verbose" data-i18n="label.verbose">Ausführliche Ausgabe</span>
+                            <small class="form-hint" data-i18n="hint.verbose">Debug-Infos im Terminal</small>
+                        </div>
+                        <label class="toggle"><input type="checkbox" id="verbose" aria-labelledby="lbl-verbose"><span class="toggle-slider"></span></label>
+                    </div>
+                </div>
+                <div class="settings-section-label" data-i18n="section.youtube">YouTube Account</div>
+                <div class="form-group">
+                    <div class="toggle-row">
+                        <div class="toggle-info">
+                            <span class="toggle-label" data-i18n="label.cookies">Browser Cookies</span>
+                            <small class="form-hint" data-i18n="hint.cookies">Für private Playlists & altersgeschützte Inhalte</small>
+                        </div>
+                        <span id="cookiesStatusBadge" class="cookies-status-badge" data-i18n="cookies.inactive">Nicht aktiv</span>
+                    </div>
+                    <div class="cookies-actions">
+                        <input type="file" id="cookiesFileInput" accept=".txt" style="display:none">
+                        <button id="cookiesUploadBtn" class="btn btn-secondary" data-i18n="btn.cookiesUpload">Hochladen</button>
+                        <button id="cookiesRemoveBtn" class="btn btn-secondary hidden" data-i18n="btn.cookiesRemove">Entfernen</button>
+                    </div>
+                    <small class="form-hint" style="margin-top:6px" data-i18n="hint.cookiesHow">Exportiere cookies.txt mit "Get cookies.txt LOCALLY"</small>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="label.shortcuts">iOS Shortcuts Endpoint</label>
+                    <div class="shortcuts-endpoint-row">
+                        <code id="shortcutsEndpointEl" class="shortcuts-endpoint-code"></code>
+                        <button id="copyEndpointBtn" class="btn btn-secondary btn-sm" data-i18n="btn.copy">Kopieren</button>
+                    </div>
+                    <small class="form-hint" data-i18n="hint.shortcuts">POST mit {"url": "..."}</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="updateYtDlpBtn" class="btn btn-secondary">Update yt-dlp</button>
+                <div class="modal-footer-right">
+                    <button id="saveSettingsBtn" class="btn btn-primary" data-i18n="btn.save">Speichern</button>
+                    <button id="cancelSettingsBtn" class="btn btn-secondary" data-i18n="btn.cancelModal">Abbrechen</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>

@@ -1,8 +1,10 @@
 node_modules/
 dist/
-bin/
 *.log
 .env
 .idea/
 .venv/
 .claude/
+data/settings.json
+data/cookies.txt
+downloads/
