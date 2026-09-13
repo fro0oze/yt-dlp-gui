@@ -23,4 +23,11 @@
   --color-terminal: rgb(134 239 172);
 
   --font-mono: 'Cascadia Code', 'Consolas', 'Courier New', monospace;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --radius-card: 1rem;
+  --shadow-card: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+body {
+  font-family: var(--font-sans);
 }
