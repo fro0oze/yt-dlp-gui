@@ -90,6 +90,15 @@ function log(message) {
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
+function requireApiKey(req, res, next) {
+  const header = req.get('authorization') || '';
+  const token = header.startsWith('Bearer ') ? header.slice(7) : '';
+  if (token && token === settings.apiKey) return next();
+  res.status(401).json({ success: false, error: 'unauthorized' });
+}
+
+app.use('/api', requireApiKey);
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function getCookiesArgs() {
