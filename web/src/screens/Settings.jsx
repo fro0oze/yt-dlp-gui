@@ -55,7 +55,11 @@ export default function Settings() {
   const queryClient = useQueryClient();
 
   const uploadCookies = useMutation({
-    mutationFn: (text) => apiFetch('/upload-cookies', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: text }),
+    mutationFn: async (text) => {
+      const data = await apiFetch('/upload-cookies', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: text });
+      if (!data.success) throw new Error('Cookies-Upload fehlgeschlagen.');
+      return data;
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['cookies-status'] }),
   });
 
@@ -68,8 +72,16 @@ export default function Settings() {
 
   const toggleProxy = useMutation({
     mutationFn: (body) => apiFetch('/toggle-proxy', { method: 'POST', body: JSON.stringify(body) }),
-    onSuccess: (_data, body) => {
+    onMutate: async (body) => {
+      await queryClient.cancelQueries({ queryKey: ['settings'] });
+      const previous = queryClient.getQueryData(['settings']);
       queryClient.setQueryData(['settings'], (prev) => ({ ...prev, ...body }));
+      return { previous };
+    },
+    onError: (_err, _body, context) => {
+      if (context && context.previous) {
+        queryClient.setQueryData(['settings'], context.previous);
+      }
     },
   });
 
@@ -109,11 +121,44 @@ export default function Settings() {
     }
   }
 
+  function copyApiKey() {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(s.apiKey);
+      return;
+    }
+    const textarea = document.createElement('textarea');
+    textarea.value = s.apiKey;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    try {
+      document.execCommand('copy');
+    } catch {
+      // ignore — user can still copy manually via "Anzeigen"
+    }
+    document.body.removeChild(textarea);
+  }
+
   function handleCookiesFile(e) {
     const file = e.target.files[0];
     if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Datei zu groß (max. 10 MB).');
+      e.target.value = '';
+      return;
+    }
     const reader = new FileReader();
-    reader.onload = () => uploadCookies.mutate(reader.result);
+    reader.onload = () => {
+      const text = reader.result;
+      if (!text || !text.trim() || !/^#\s*(Netscape|HTTP Cookie File)/m.test(text)) {
+        alert('Keine gültige cookies.txt Datei.');
+        return;
+      }
+      uploadCookies.mutate(text);
+    };
+    reader.onerror = () => alert('Datei konnte nicht gelesen werden.');
     reader.readAsText(file);
     e.target.value = '';
   }
@@ -125,8 +170,11 @@ export default function Settings() {
     return <div className="p-4 text-danger">Einstellungen konnten nicht geladen werden.</div>;
   }
 
+  const mutationError = patch.error || uploadCookies.error || removeCookies.error || toggleProxy.error || regenerateKey.error || updateYtDlp.error;
+
   return (
     <div className="p-4 flex flex-col gap-6 max-w-xl">
+      {mutationError && <p className="text-danger">{mutationError.message}</p>}
       <section>
         <h2 className="text-text-0 font-semibold mb-2">Audio &amp; Video</h2>
         <label className="flex flex-col gap-1 py-2">
@@ -244,7 +292,7 @@ export default function Settings() {
           </button>
           <button
             type="button"
-            onClick={() => navigator.clipboard.writeText(s.apiKey)}
+            onClick={copyApiKey}
             className="bg-bg-1 text-text-0 px-3 py-2 rounded"
           >
             Kopieren
