@@ -73,6 +73,20 @@ export default function Playlists() {
     setFilterText('');
   }
 
+  const addSelectedToQueue = useMutation({
+    mutationFn: async () => {
+      const items = entriesQuery.data.entries
+        .filter((e) => selectedIds.has(e.id))
+        .map((e) => ({ url: e.url, customName: null }));
+      const data = await apiFetch('/queue', { method: 'POST', body: JSON.stringify({ items }) });
+      if (!data.success) throw new Error('Konnte nicht zur Queue hinzugefügt werden.');
+      return data;
+    },
+    onSuccess: () => {
+      setSelectedIds(new Set());
+    },
+  });
+
   if (savedQuery.isPending) {
     return <div className="p-4 text-text-2">Lade Playlists...</div>;
   }
@@ -160,6 +174,15 @@ export default function Playlists() {
                     </label>
                   ))}
               </div>
+              <button
+                type="button"
+                onClick={() => addSelectedToQueue.mutate()}
+                disabled={selectedIds.size === 0 || addSelectedToQueue.isPending}
+                className="bg-indigo text-text-0 px-4 py-2 rounded disabled:opacity-50 self-start"
+              >
+                {addSelectedToQueue.isPending ? 'Wird hinzugefügt...' : `${selectedIds.size} zur Queue hinzufügen`}
+              </button>
+              {addSelectedToQueue.isError && <p className="text-danger">{addSelectedToQueue.error.message}</p>}
             </>
           )}
         </div>
