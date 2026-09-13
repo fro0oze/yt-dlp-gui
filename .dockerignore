@@ -1,0 +1,10 @@
+node_modules
+web/node_modules
+web/dist
+.git
+data
+downloads
+*.log
+.env
+docs
+.claude
