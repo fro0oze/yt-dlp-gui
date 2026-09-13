@@ -7,7 +7,20 @@
   --color-text-0: rgb(250 250 250);
   --color-text-1: rgb(232 232 237);
   --color-text-2: rgb(161 161 170);
+  --color-text-3: rgb(139 139 148);
+  --color-text-4: rgb(113 113 122);
+  --color-text-5: rgb(100 100 109);
   --color-success: rgb(34 197 94);
   --color-danger: rgb(239 68 68);
+  --color-danger-light: rgb(248 113 113);
   --color-indigo: rgb(99 102 241);
+  --color-amber: rgb(251 191 36);
+  --color-sky: rgb(56 189 248);
+  --color-violet: rgb(167 139 250);
+  --color-orange: rgb(251 146 60);
+  --color-orange-light: rgb(253 186 116);
+  --color-rose: rgb(252 165 165);
+  --color-terminal: rgb(134 239 172);
+
+  --font-mono: 'Cascadia Code', 'Consolas', 'Courier New', monospace;
 }
