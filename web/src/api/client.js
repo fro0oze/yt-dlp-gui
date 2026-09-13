@@ -24,5 +24,9 @@ export async function apiFetch(path, options = {}) {
       }
     }
   }
-  return res.json();
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error((data && data.error) || `Request failed: ${res.status}`);
+  }
+  return data;
 }
