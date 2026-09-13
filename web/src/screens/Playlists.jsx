@@ -43,6 +43,7 @@ export default function Playlists() {
   function openPlaylist(playlist) {
     setActivePlaylist(playlist);
     setView('entries');
+    addSelectedToQueue.reset();
   }
 
   const [selectedIds, setSelectedIds] = useState(new Set());
@@ -71,6 +72,7 @@ export default function Playlists() {
     setActivePlaylist(null);
     setSelectedIds(new Set());
     setFilterText('');
+    addSelectedToQueue.reset();
   }
 
   const addSelectedToQueue = useMutation({
