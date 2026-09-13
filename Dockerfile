@@ -1,3 +1,11 @@
+FROM node:20-slim AS web-builder
+
+WORKDIR /web
+COPY web/package.json web/package-lock.json ./
+RUN npm install
+COPY web/ ./
+RUN npm run build
+
 FROM node:20-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -21,7 +29,7 @@ COPY package.json ./
 RUN npm install --omit=dev
 
 COPY server/ ./server/
-COPY public/ ./public/
+COPY --from=web-builder /web/dist ./web/dist
 
 RUN mkdir -p /downloads /data
 

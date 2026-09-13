@@ -2,7 +2,7 @@
 
 A self-hosted web GUI for [yt-dlp](https://github.com/yt-dlp/yt-dlp) — download videos and audio from YouTube and 1000+ other platforms from any browser on your network, with no command line required.
 
-Runs as a small Docker container (Node/Express backend + vanilla JS frontend), so it's easy to put on a home server or NAS and use from desktop or phone.
+Runs as a small Docker container (Node/Express backend + React frontend), so it's easy to put on a home server or NAS and use from desktop or phone.
 
 ---
 
@@ -19,7 +19,6 @@ Runs as a small Docker container (Node/Express backend + vanilla JS frontend), s
 - 🍪 **Cookie upload** — Use your browser cookies for private playlists & age-restricted content
 - 📱 **iOS Shortcuts endpoint** — Trigger downloads from the Shortcuts app and pull the finished file
 - 🛠️ **Custom yt-dlp arguments** — Full control for advanced users
-- 🌍 **German / English UI**
 - 📟 **Live terminal** — Streamed yt-dlp output over WebSocket
 - 📐 **Responsive** — Usable on desktop and mobile
 
@@ -102,15 +101,15 @@ npm start
 
 Open `http://localhost:3000`. Settings persist to `data/settings.json`, downloads default to `/downloads` unless `DOWNLOAD_PATH` is set.
 
-### New frontend (in development)
+### Frontend
 
-A React/Vite rewrite lives in `web/` and is not yet wired into production. To run it against the real backend during development:
+The React/Vite frontend lives in `web/`. To run it against the real backend during development:
 
 ```bash
-# terminal 1 — the existing backend
+# terminal 1 — the backend
 npm start
 
-# terminal 2 — the new frontend's dev server (proxies /api and /ws to :3000)
+# terminal 2 — the frontend's dev server (proxies /api and /ws to :3000)
 cd web
 npm install
 npm run dev
@@ -124,10 +123,8 @@ Open the URL Vite prints (typically `http://localhost:5173`).
 yt-dlp-web/
 ├── server/
 │   └── server.js       # Express + WebSocket backend — downloads, queue, playlists, settings, cookies
-├── public/
-│   ├── index.html       # UI layout
-│   ├── styles.css        # Styling (design tokens in :root, dark theme)
-│   └── app.js            # Frontend logic — event handlers, WebSocket client, i18n
+├── web/
+│   └── src/             # React frontend — screens, components, API/WebSocket clients
 ├── data/                 # Persisted settings.json + cookies.txt (gitignored)
 ├── Dockerfile
 ├── docker-compose.yml

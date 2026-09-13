@@ -89,7 +89,7 @@ function log(message) {
 // ─── Middleware ───────────────────────────────────────────────────────────────
 
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '..', 'public')));
+app.use(express.static(path.join(__dirname, '..', 'web', 'dist')));
 
 function requireApiKey(req, res, next) {
   const header = req.get('authorization') || '';
@@ -801,7 +801,7 @@ app.post('/api/update-ytdlp', (req, res) => {
 // ─── Fallback to index.html ──────────────────────────────────────────────────
 
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, '..', 'web', 'dist', 'index.html'));
 });
 
 // ─── Start ───────────────────────────────────────────────────────────────────
