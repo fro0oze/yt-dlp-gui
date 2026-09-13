@@ -144,7 +144,7 @@ function checkIfFileExists(url) {
         if (!fs.existsSync(DOWNLOAD_PATH)) return resolve({ exists: false });
         const files = fs.readdirSync(DOWNLOAD_PATH);
         const exts = settings.format === 'mp4'
-          ? (settings.subtitlesEnabled ? ['.mkv', '.mp4'] : ['.mp4'])
+          ? ((settings.subtitlesEnabled || settings.mkvContainer) ? ['.mkv', '.mp4'] : ['.mp4'])
           : ['.mp3'];
         const match = files.find(f => f.includes(`[${id}]`) && exts.some(ext => f.endsWith(ext)));
         resolve(match ? { exists: true, filename: match } : { exists: false });

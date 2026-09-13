@@ -6,6 +6,11 @@ function getStoredKey() {
     return localStorage.getItem(API_KEY_STORAGE) || '';
 }
 
+export function authHeaders(extra = {}) {
+    const key = getStoredKey();
+    return key ? { ...extra, Authorization: `Bearer ${key}` } : { ...extra };
+}
+
 export async function api(method, path, body) {
     const opts = { method, headers: { 'Content-Type': 'application/json' } };
     const key = getStoredKey();
