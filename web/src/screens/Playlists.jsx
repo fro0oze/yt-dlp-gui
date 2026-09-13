@@ -6,6 +6,14 @@ function useSavedPlaylists() {
   return useQuery({ queryKey: ['saved-playlists'], queryFn: () => apiFetch('/saved-playlists') });
 }
 
+function useEntries(url) {
+  return useQuery({
+    queryKey: ['playlist-entries', url],
+    queryFn: () => apiFetch(`/playlist-info?url=${encodeURIComponent(url)}`),
+    enabled: !!url,
+  });
+}
+
 export default function Playlists() {
   const savedQuery = useSavedPlaylists();
   const queryClient = useQueryClient();
@@ -35,6 +43,34 @@ export default function Playlists() {
   function openPlaylist(playlist) {
     setActivePlaylist(playlist);
     setView('entries');
+  }
+
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [filterText, setFilterText] = useState('');
+
+  const entriesQuery = useEntries(view === 'entries' && activePlaylist ? activePlaylist.url : null);
+
+  function toggleEntry(id) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function selectAll(entries) {
+    setSelectedIds(new Set(entries.map((e) => e.id)));
+  }
+
+  function selectNone() {
+    setSelectedIds(new Set());
+  }
+
+  function backToList() {
+    setView('list');
+    setActivePlaylist(null);
+    setSelectedIds(new Set());
+    setFilterText('');
   }
 
   if (savedQuery.isPending) {
@@ -85,6 +121,48 @@ export default function Playlists() {
             </div>
           )}
         </>
+      )}
+
+      {view === 'entries' && activePlaylist && (
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={backToList} className="text-text-2">‹ Zurück</button>
+            <span className="text-text-0 font-semibold truncate">{activePlaylist.name}</span>
+          </div>
+
+          {entriesQuery.isPending && <p className="text-text-2">Lade Einträge...</p>}
+          {entriesQuery.isError && <p className="text-danger">Einträge konnten nicht geladen werden.</p>}
+          {entriesQuery.data && !entriesQuery.data.success && (
+            <p className="text-danger">{entriesQuery.data.error || 'Playlist konnte nicht geladen werden.'}</p>
+          )}
+
+          {entriesQuery.data && entriesQuery.data.success && (
+            <>
+              <div className="flex gap-2 items-center">
+                <button type="button" onClick={() => selectAll(entriesQuery.data.entries)} className="text-text-2">Alle</button>
+                <button type="button" onClick={selectNone} className="text-text-2">Keine</button>
+                <input
+                  type="text"
+                  value={filterText}
+                  onChange={(e) => setFilterText(e.target.value)}
+                  placeholder="Filtern..."
+                  className="flex-1 bg-bg-1 text-text-0 px-3 py-2 rounded"
+                />
+                <span className="text-text-2">{selectedIds.size} ausgewählt</span>
+              </div>
+              <div className="flex flex-col gap-1 max-h-96 overflow-y-auto">
+                {entriesQuery.data.entries
+                  .filter((e) => e.title.toLowerCase().includes(filterText.toLowerCase()))
+                  .map((e) => (
+                    <label key={e.id} className="flex items-center gap-2 bg-bg-1 px-3 py-2 rounded">
+                      <input type="checkbox" checked={selectedIds.has(e.id)} onChange={() => toggleEntry(e.id)} />
+                      <span className="text-text-0 truncate flex-1">{e.title}</span>
+                    </label>
+                  ))}
+              </div>
+            </>
+          )}
+        </div>
       )}
     </div>
   );
