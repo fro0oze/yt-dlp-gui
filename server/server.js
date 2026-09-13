@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const { spawn } = require('child_process');
 const { WebSocketServer } = require('ws');
 
@@ -57,7 +58,15 @@ function saveSettings(settings) {
   fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2));
 }
 
+function generateApiKey() {
+  return crypto.randomBytes(24).toString('hex');
+}
+
 let settings = loadSettings();
+if (!settings.apiKey) {
+  settings.apiKey = generateApiKey();
+  saveSettings(settings);
+}
 
 // ─── WebSocket Broadcast ─────────────────────────────────────────────────────
 
@@ -772,4 +781,6 @@ if (!fs.existsSync(DOWNLOAD_PATH)) fs.mkdirSync(DOWNLOAD_PATH, { recursive: true
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`yt-dlp-web running on http://0.0.0.0:${PORT}`);
+  console.log(`API key: ${settings.apiKey}`);
+  console.log(`Use header: Authorization: Bearer ${settings.apiKey}`);
 });
