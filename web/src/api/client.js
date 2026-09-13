@@ -11,11 +11,17 @@ export async function apiFetch(path, options = {}) {
 
   let res = await fetch(`/api${path}`, opts);
   if (res.status === 401) {
-    const entered = prompt('API-Key erforderlich (siehe Server-Log beim Start):');
-    if (entered) {
-      localStorage.setItem(API_KEY_STORAGE, entered);
-      opts.headers['Authorization'] = `Bearer ${entered}`;
+    const current = getStoredKey();
+    if (current && current !== key) {
+      opts.headers['Authorization'] = `Bearer ${current}`;
       res = await fetch(`/api${path}`, opts);
+    } else {
+      const entered = prompt('API-Key erforderlich (siehe Server-Log beim Start):');
+      if (entered) {
+        localStorage.setItem(API_KEY_STORAGE, entered);
+        opts.headers['Authorization'] = `Bearer ${entered}`;
+        res = await fetch(`/api${path}`, opts);
+      }
     }
   }
   return res.json();
