@@ -2,6 +2,7 @@ import { useState } from 'react';
 import Home from './screens/Home.jsx';
 import Queue from './screens/Queue.jsx';
 import Settings from './screens/Settings.jsx';
+import Playlists from './screens/Playlists.jsx';
 import TerminalSheet from './components/TerminalSheet.jsx';
 
 export default function App() {
@@ -26,13 +27,20 @@ export default function App() {
         </button>
         <button
           type="button"
+          onClick={() => setView('playlists')}
+          className={view === 'playlists' ? 'text-text-0 font-semibold' : 'text-text-2'}
+        >
+          Playlists
+        </button>
+        <button
+          type="button"
           onClick={() => setView('settings')}
           className={view === 'settings' ? 'text-text-0 font-semibold' : 'text-text-2'}
         >
           Settings
         </button>
       </nav>
-      {view === 'home' ? <Home /> : view === 'queue' ? <Queue /> : <Settings />}
+      {view === 'home' ? <Home /> : view === 'queue' ? <Queue /> : view === 'playlists' ? <Playlists /> : <Settings />}
       <TerminalSheet />
     </div>
   );
