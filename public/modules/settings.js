@@ -7,7 +7,7 @@ import {
     cookiesStatusBadge, cookiesRemoveBtn, cookiesFileInput,
 } from './dom.js';
 import { state } from './state.js';
-import { api } from './api.js';
+import { api, authHeaders } from './api.js';
 import { t, applyTranslations, TRANSLATIONS } from './i18n.js';
 import { showToast } from './toast.js';
 import { appendToTerminal } from './terminal.js';
@@ -214,7 +214,7 @@ export function handleCookiesUpload() {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = async (e) => {
-        const res = await fetch('/api/upload-cookies', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: e.target.result });
+        const res = await fetch('/api/upload-cookies', { method: 'POST', headers: authHeaders({ 'Content-Type': 'text/plain' }), body: e.target.result });
         const data = await res.json();
         if (data.success) { updateCookiesUI(true); showToast('Cookies gespeichert'); }
         cookiesFileInput.value = '';

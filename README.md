@@ -80,7 +80,7 @@ For private playlists or age-restricted content, export `cookies.txt` with a bro
 
 ### iOS Shortcuts
 
-Settings shows a ready-to-copy endpoint (`/api/shortcuts/download`). POST `{"url": "..."}` to start a download, then poll the returned `pollUrl` until `status` is `done`, and fetch `downloadUrl` to pull the file to your device.
+Settings shows a ready-to-copy endpoint (`/api/shortcuts/download`) and your API key. POST `{"url": "..."}` with an `Authorization: Bearer <your-api-key>` header to start a download, then poll the returned `pollUrl` (same header required) until `status` is `done`, and fetch `downloadUrl` (same header required) to pull the file to your device.
 
 ---
 

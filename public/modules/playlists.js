@@ -3,7 +3,7 @@ import {
     ytListView, ytEntriesView, ytFilter, ytSelectedCount,
 } from './dom.js';
 import { state } from './state.js';
-import { api } from './api.js';
+import { api, authHeaders } from './api.js';
 import { t } from './i18n.js';
 import { showToast } from './toast.js';
 import { switchTab } from './tabs.js';
@@ -38,7 +38,7 @@ async function openYtPlaylist(pl) {
     ytEntriesList.innerHTML = '<div style="color:rgb(var(--c-text-4));font-size:var(--font-12);padding:var(--space-8);">Wird geladen...</div>';
     showYtEntriesView();
 
-    const res = await fetch(`/api/playlist-info?url=${encodeURIComponent(pl.url)}`);
+    const res = await fetch(`/api/playlist-info?url=${encodeURIComponent(pl.url)}`, { headers: authHeaders() });
     const result = await res.json();
 
     if (!result.success) {

@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const { spawn } = require('child_process');
 const { WebSocketServer } = require('ws');
 
@@ -20,6 +21,7 @@ const DEFAULT_SETTINGS = {
   format: process.env.DEFAULT_FORMAT || 'mp3',
   audioQuality: process.env.DEFAULT_AUDIO_QUALITY || '192',
   videoQuality: process.env.DEFAULT_VIDEO_QUALITY || 'best',
+  mkvContainer: false,
   embedThumbnail: false,
   speedLimit: '',
   subtitlesEnabled: false,
@@ -57,7 +59,15 @@ function saveSettings(settings) {
   fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2));
 }
 
+function generateApiKey() {
+  return crypto.randomBytes(24).toString('hex');
+}
+
 let settings = loadSettings();
+if (!settings.apiKey) {
+  settings.apiKey = generateApiKey();
+  saveSettings(settings);
+}
 
 // ─── WebSocket Broadcast ─────────────────────────────────────────────────────
 
@@ -80,6 +90,15 @@ function log(message) {
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'public')));
+
+function requireApiKey(req, res, next) {
+  const header = req.get('authorization') || '';
+  const token = header.startsWith('Bearer ') ? header.slice(7) : '';
+  if (token && token === settings.apiKey) return next();
+  res.status(401).json({ success: false, error: 'unauthorized' });
+}
+
+app.use('/api', requireApiKey);
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -125,7 +144,7 @@ function checkIfFileExists(url) {
         if (!fs.existsSync(DOWNLOAD_PATH)) return resolve({ exists: false });
         const files = fs.readdirSync(DOWNLOAD_PATH);
         const exts = settings.format === 'mp4'
-          ? (settings.subtitlesEnabled ? ['.mkv', '.mp4'] : ['.mp4'])
+          ? ((settings.subtitlesEnabled || settings.mkvContainer) ? ['.mkv', '.mp4'] : ['.mp4'])
           : ['.mp3'];
         const match = files.find(f => f.includes(`[${id}]`) && exts.some(ext => f.endsWith(ext)));
         resolve(match ? { exists: true, filename: match } : { exists: false });
@@ -181,7 +200,7 @@ function buildDownloadArgs(url, langOptions, customName) {
       args.push('--ppa', `Merger+ffmpeg:${mergeArgs.join(' ')}`);
     } else {
       args.push('-f', `${videoFilter}+bestaudio/best`);
-      args.push('--merge-output-format', 'mp4');
+      args.push('--merge-output-format', settings.mkvContainer ? 'mkv' : 'mp4');
       args.push('--ppa', 'Merger+ffmpeg:-c:v copy -c:a aac');
     }
     if (settings.embedThumbnail) args.push('--embed-thumbnail');
@@ -389,9 +408,17 @@ app.get('/api/settings', (req, res) => {
 });
 
 app.post('/api/settings', (req, res) => {
-  settings = { ...settings, ...req.body };
+  const { apiKey, ...rest } = req.body;
+  settings = { ...settings, ...rest };
   saveSettings(settings);
   res.json({ success: true });
+});
+
+app.post('/api/settings/regenerate-key', (req, res) => {
+  settings.apiKey = generateApiKey();
+  saveSettings(settings);
+  console.log(`New API key generated: ${settings.apiKey}`);
+  res.json({ success: true, apiKey: settings.apiKey });
 });
 
 app.post('/api/toggle-proxy', (req, res) => {
@@ -772,4 +799,6 @@ if (!fs.existsSync(DOWNLOAD_PATH)) fs.mkdirSync(DOWNLOAD_PATH, { recursive: true
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`yt-dlp-web running on http://0.0.0.0:${PORT}`);
+  console.log(`API key: ${settings.apiKey}`);
+  console.log(`Use header: Authorization: Bearer ${settings.apiKey}`);
 });
