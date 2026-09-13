@@ -102,6 +102,22 @@ npm start
 
 Open `http://localhost:3000`. Settings persist to `data/settings.json`, downloads default to `/downloads` unless `DOWNLOAD_PATH` is set.
 
+### New frontend (in development)
+
+A React/Vite rewrite lives in `web/` and is not yet wired into production. To run it against the real backend during development:
+
+```bash
+# terminal 1 — the existing backend
+npm start
+
+# terminal 2 — the new frontend's dev server (proxies /api and /ws to :3000)
+cd web
+npm install
+npm run dev
+```
+
+Open the URL Vite prints (typically `http://localhost:5173`).
+
 ### Project Structure
 
 ```
