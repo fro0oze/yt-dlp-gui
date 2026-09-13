@@ -1,0 +1,13 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg-0: rgb(13 13 15);
+  --color-bg-1: rgb(24 24 27);
+  --color-bg-2: rgb(39 39 42);
+  --color-text-0: rgb(250 250 250);
+  --color-text-1: rgb(232 232 237);
+  --color-text-2: rgb(161 161 170);
+  --color-success: rgb(34 197 94);
+  --color-danger: rgb(239 68 68);
+  --color-indigo: rgb(99 102 241);
+}
