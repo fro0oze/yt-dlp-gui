@@ -210,17 +210,6 @@ export default function Settings() {
 
       <section>
         <h2 className="text-text-0 font-semibold mb-2">Allgemein</h2>
-        <label className="flex flex-col gap-1 py-2">
-          <span className="text-text-1">App-Sprache</span>
-          <select
-            value={s.appLang}
-            onChange={(e) => patch.mutate({ appLang: e.target.value })}
-            className="bg-bg-1 text-text-0 px-3 py-2 rounded"
-          >
-            <option value="de">Deutsch</option>
-            <option value="en">English</option>
-          </select>
-        </label>
         <ToggleRow label="Bestehende Dateien überspringen" checked={s.skipExisting} onChange={(v) => patch.mutate({ skipExisting: v })} />
         <ToggleRow label="Terminal auto-leeren" checked={s.clearBetweenItems} onChange={(v) => patch.mutate({ clearBetweenItems: v })} />
         <TextRow label="Pause zwischen Downloads (Sekunden)" value={s.downloadDelay} onCommit={(v) => patch.mutate({ downloadDelay: v })} placeholder="0" />
