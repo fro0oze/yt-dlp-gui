@@ -1,5 +1,6 @@
 const listeners = new Set();
 let socket = null;
+let lastQueueUpdate = null;
 
 function connect() {
   const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -12,7 +13,14 @@ function connect() {
     } catch {
       return;
     }
-    listeners.forEach((listener) => listener(msg));
+    if (msg.type === 'queue-update') lastQueueUpdate = msg;
+    listeners.forEach((listener) => {
+      try {
+        listener(msg);
+      } catch (err) {
+        console.error(err);
+      }
+    });
   });
 
   socket.addEventListener('close', () => {
@@ -23,5 +31,6 @@ function connect() {
 export function subscribe(listener) {
   if (!socket) connect();
   listeners.add(listener);
+  if (lastQueueUpdate) listener(lastQueueUpdate);
   return () => listeners.delete(listener);
 }

@@ -11,7 +11,10 @@ export default function TerminalSheet() {
   useEffect(() => {
     return subscribe((msg) => {
       if (msg.type === 'terminal') {
-        setLog((prev) => prev + msg.data);
+        setLog((prev) => {
+          const next = prev + msg.data;
+          return next.length > 100_000 ? next.slice(-100_000) : next;
+        });
       } else if (msg.type === 'queue-update') {
         const active = msg.data.items.find((item) => item.status === 'active');
         setProgress(active && active.progress ? Number(active.progress) : null);
@@ -21,7 +24,7 @@ export default function TerminalSheet() {
 
   useEffect(() => {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
-  }, [log]);
+  }, [log, open]);
 
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
