@@ -16,6 +16,10 @@ function usePatchSettings() {
   });
 }
 
+function useCookiesStatus() {
+  return useQuery({ queryKey: ['cookies-status'], queryFn: () => apiFetch('/cookies-status') });
+}
+
 function ToggleRow({ label, checked, onChange }) {
   return (
     <label className="flex items-center justify-between py-2 gap-4">
@@ -46,6 +50,28 @@ export default function Settings() {
   const settingsQuery = useSettingsQuery();
   const patch = usePatchSettings();
   const s = settingsQuery.data;
+
+  const cookiesStatus = useCookiesStatus();
+  const queryClient = useQueryClient();
+
+  const uploadCookies = useMutation({
+    mutationFn: (text) => apiFetch('/upload-cookies', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: text }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['cookies-status'] }),
+  });
+
+  const removeCookies = useMutation({
+    mutationFn: () => apiFetch('/cookies', { method: 'DELETE' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['cookies-status'] }),
+  });
+
+  function handleCookiesFile(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => uploadCookies.mutate(reader.result);
+    reader.readAsText(file);
+    e.target.value = '';
+  }
 
   if (settingsQuery.isPending) {
     return <div className="p-4 text-text-2">Lade Einstellungen...</div>;
@@ -112,6 +138,24 @@ export default function Settings() {
         <TextRow label="Eigene yt-dlp Argumente" value={s.customArgs} onCommit={(v) => patch.mutate({ customArgs: v })} placeholder="z.B. --playlist-start 1" />
         <ToggleRow label="Deno JS-Runtime" checked={s.jsRuntime} onChange={(v) => patch.mutate({ jsRuntime: v })} />
         <ToggleRow label="Ausführliche Ausgabe" checked={s.verbose} onChange={(v) => patch.mutate({ verbose: v })} />
+      </section>
+
+      <section>
+        <h2 className="text-text-0 font-semibold mb-2">YouTube Account</h2>
+        <p className="text-text-2">
+          Cookies: {cookiesStatus.data && cookiesStatus.data.active ? <span className="text-success">aktiv</span> : <span className="text-text-2">nicht aktiv</span>}
+        </p>
+        <div className="flex gap-2 mt-2">
+          <label className="bg-bg-1 text-text-0 px-4 py-2 rounded cursor-pointer">
+            Hochladen
+            <input type="file" accept=".txt" onChange={handleCookiesFile} className="hidden" />
+          </label>
+          {cookiesStatus.data && cookiesStatus.data.active && (
+            <button type="button" onClick={() => removeCookies.mutate()} className="bg-bg-1 text-text-0 px-4 py-2 rounded">
+              Entfernen
+            </button>
+          )}
+        </div>
       </section>
     </div>
   );
