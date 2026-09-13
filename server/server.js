@@ -776,6 +776,10 @@ app.post('/api/update-ytdlp', (req, res) => {
   proc.stdout.on('data', (data) => log(data.toString()));
   proc.stderr.on('data', (data) => log(data.toString()));
 
+  proc.on('error', (err) => {
+    log(`[SYSTEM] yt-dlp update failed: ${err.message}\n\n`);
+  });
+
   proc.on('close', (code) => {
     if (code === 0) {
       log('[SYSTEM] yt-dlp is up to date!\n\n');
