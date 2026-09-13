@@ -21,6 +21,7 @@ const DEFAULT_SETTINGS = {
   format: process.env.DEFAULT_FORMAT || 'mp3',
   audioQuality: process.env.DEFAULT_AUDIO_QUALITY || '192',
   videoQuality: process.env.DEFAULT_VIDEO_QUALITY || 'best',
+  mkvContainer: false,
   embedThumbnail: false,
   speedLimit: '',
   subtitlesEnabled: false,
@@ -199,7 +200,7 @@ function buildDownloadArgs(url, langOptions, customName) {
       args.push('--ppa', `Merger+ffmpeg:${mergeArgs.join(' ')}`);
     } else {
       args.push('-f', `${videoFilter}+bestaudio/best`);
-      args.push('--merge-output-format', 'mp4');
+      args.push('--merge-output-format', settings.mkvContainer ? 'mkv' : 'mp4');
       args.push('--ppa', 'Merger+ffmpeg:-c:v copy -c:a aac');
     }
     if (settings.embedThumbnail) args.push('--embed-thumbnail');
