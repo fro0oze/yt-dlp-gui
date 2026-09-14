@@ -1,6 +1,7 @@
 services:
   yt-dlp-web:
     build: .
+    container_name: downloader
     ports:
       - 80:3000
     volumes:
