@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Trash2 } from 'lucide-react';
-import { apiFetch, setStoredKey } from '../api/client.js';
+import { apiFetch } from '../api/client.js';
 import Card from '../components/ui/Card.jsx';
 import Button from '../components/ui/Button.jsx';
 import TextInput from '../components/ui/TextInput.jsx';
@@ -102,7 +102,6 @@ export default function Settings() {
   const regenerateKey = useMutation({
     mutationFn: () => apiFetch('/settings/regenerate-key', { method: 'POST' }),
     onSuccess: (data) => {
-      setStoredKey(data.apiKey);
       queryClient.setQueryData(['settings'], (prev) => ({ ...prev, apiKey: data.apiKey }));
     },
   });

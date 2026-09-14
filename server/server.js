@@ -98,7 +98,7 @@ function requireApiKey(req, res, next) {
   res.status(401).json({ success: false, error: 'unauthorized' });
 }
 
-app.use('/api', requireApiKey);
+app.use('/api/shortcuts', requireApiKey);
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
