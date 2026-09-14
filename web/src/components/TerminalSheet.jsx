@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
 import { subscribe } from '../ws/client.js';
+import { subscribeOpenTerminal } from '../terminalControl.js';
 import IconButton from './ui/IconButton.jsx';
 
 export default function TerminalSheet() {
@@ -27,6 +28,10 @@ export default function TerminalSheet() {
   useEffect(() => {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
   }, [log, open]);
+
+  useEffect(() => {
+    return subscribeOpenTerminal(() => setOpen(true));
+  }, []);
 
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>

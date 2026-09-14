@@ -1,15 +1,30 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ClipboardPaste } from 'lucide-react';
 import { apiFetch } from '../api/client.js';
 import { detectPlatform } from '../platform.js';
 import Card from '../components/ui/Card.jsx';
 import Button from '../components/ui/Button.jsx';
 import TextInput from '../components/ui/TextInput.jsx';
 import Badge from '../components/ui/Badge.jsx';
+import IconButton from '../components/ui/IconButton.jsx';
 
 export default function Home() {
   const [url, setUrl] = useState('');
+  const [pasteError, setPasteError] = useState('');
   const queryClient = useQueryClient();
+
+  async function pasteFromClipboard() {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) {
+        setUrl(text.trim());
+        setPasteError('');
+      }
+    } catch {
+      setPasteError('Einfügen nicht möglich — bitte manuell einfügen.');
+    }
+  }
 
   const settingsQuery = useQuery({
     queryKey: ['settings'],
@@ -43,7 +58,9 @@ export default function Home() {
             className="flex-1"
           />
           {url && <Badge>{platform.label}</Badge>}
+          <IconButton icon={ClipboardPaste} label="URL einfügen" onClick={pasteFromClipboard} />
         </div>
+        {pasteError && <p className="text-danger text-sm">{pasteError}</p>}
         <div className="flex gap-2">
           <Button
             variant={format === 'mp3' ? 'primary' : 'secondary'}

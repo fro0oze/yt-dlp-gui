@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { RotateCw } from 'lucide-react';
+import { RotateCw, SquareTerminal } from 'lucide-react';
 import { subscribe } from '../ws/client.js';
 import { apiFetch } from '../api/client.js';
+import { openTerminal } from '../terminalControl.js';
 import Card from '../components/ui/Card.jsx';
 import StatusBadge from '../components/ui/StatusBadge.jsx';
 import IconButton from '../components/ui/IconButton.jsx';
@@ -37,6 +38,7 @@ export default function Queue() {
               {item.status === 'error' && (
                 <IconButton icon={RotateCw} label="Erneut versuchen" onClick={() => retry.mutate(item)} />
               )}
+              <IconButton icon={SquareTerminal} label="Terminal anzeigen" onClick={openTerminal} />
             </div>
           </div>
           {item.status === 'active' && item.progress ? (
