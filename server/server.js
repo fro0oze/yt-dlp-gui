@@ -178,7 +178,10 @@ function buildDownloadArgs(url, langOptions, customName) {
     if (settings.embedThumbnail) args.push('--embed-thumbnail');
   } else if (settings.format === 'mp4') {
     const q = settings.videoQuality || 'best';
-    const videoFilter = q === 'best' ? 'bestvideo' : `bestvideo[height<=${q}]`;
+    const heightConstraint = q === 'best' ? '' : `[height<=${q}]`;
+    // Exclude AV1/VP9: not supported by iOS Photos on most iPhones, unlike H.264/HEVC.
+    // YouTube labels VP9 as "vp9" (webm) or "vp09.xx.xx.xx" (mp4 DASH) — exclude both.
+    const videoFilter = `bestvideo${heightConstraint}[vcodec!*=av01][vcodec!*=vp9][vcodec!*=vp09]`;
 
     if (settings.subtitlesEnabled && langOptions) {
       const audioLangs = langOptions.audio || [];
@@ -435,11 +438,18 @@ async function processDownloadQueue() {
 setInterval(() => {
   const active = queueItems.filter(i => i.status === 'active');
   const pending = downloadQueue.length;
-  if (active.length === 0 && pending === 0) return;
-  const activeInfo = active
-    .map(i => `${(i.customName || i.url).slice(0, 60)}${i.progress ? ` ${i.progress}%` : ''}`)
-    .join(', ');
-  console.log(`[QUEUE] ${active.length} aktiv, ${pending} wartend${activeInfo ? ' — ' + activeInfo : ''}`);
+  if (active.length > 0 || pending > 0) {
+    const activeInfo = active
+      .map(i => `${(i.customName || i.url).slice(0, 60)}${i.progress ? ` ${i.progress}%` : ''}`)
+      .join(', ');
+    console.log(`[QUEUE] ${active.length} aktiv, ${pending} wartend${activeInfo ? ' — ' + activeInfo : ''}`);
+  }
+
+  const activeShortcuts = [...shortcutJobs.values()].filter(j => j.status === 'pending');
+  if (activeShortcuts.length > 0) {
+    const info = activeShortcuts.map(j => (j.url || '').slice(0, 60)).join(', ');
+    console.log(`[SHORTCUTS] ${activeShortcuts.length} aktiv — ${info}`);
+  }
 }, 10000);
 
 // ─── API: Settings ───────────────────────────────────────────────────────────
@@ -730,6 +740,7 @@ function runShortcutDownload(jobId, url) {
   if (oIdx !== -1) args[oIdx + 1] = path.join(jobDir, '%(title)s [%(id)s].%(ext)s');
 
   log(`\n[SHORTCUTS] Download started: ${url}\n`);
+  console.log(`[SHORTCUTS] Download started: ${url}`);
 
   const proc = spawn(YTDLP_PATH, args);
   let stderrBuffer = '';
@@ -757,24 +768,29 @@ function runShortcutDownload(jobId, url) {
           job.status   = 'done';
           job.filename = path.basename(destPath);
           log(`[SHORTCUTS] Ready for download: ${job.filename}\n\n`);
+          console.log(`[SHORTCUTS] Ready for download: ${job.filename}`);
         } else {
           job.status = 'error';
           job.error  = 'No file produced';
+          console.log(`[SHORTCUTS] Failed (${url}): ${job.error}`);
         }
       } catch {
         job.status = 'error';
         job.error  = 'Could not read output dir';
+        console.log(`[SHORTCUTS] Failed (${url}): ${job.error}`);
       }
     } else {
       job.status = 'error';
       job.error  = extractErrorSummary(stderrBuffer) || `yt-dlp exit code ${code}`;
       log(`[SHORTCUTS] Download failed (code ${code})\n\n`);
+      console.log(`[SHORTCUTS] Failed (${url}): ${job.error}`);
     }
   });
 
-  proc.on('error', () => {
+  proc.on('error', (err) => {
     const job = shortcutJobs.get(jobId);
     if (job) { job.status = 'error'; job.error = 'Process spawn failed'; }
+    console.log(`[SHORTCUTS] Failed (${url}): Process spawn failed — ${err.message}`);
   });
 }
 
@@ -783,7 +799,7 @@ app.post('/api/shortcuts/download', (req, res) => {
   if (!url) return res.status(400).json({ success: false, error: 'Missing url' });
 
   const jobId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-  shortcutJobs.set(jobId, { status: 'pending', filename: null, createdAt: Date.now() });
+  shortcutJobs.set(jobId, { status: 'pending', filename: null, error: null, url, createdAt: Date.now() });
 
   res.json({ success: true, jobId, pollUrl: `/api/shortcuts/status/${jobId}` });
   runShortcutDownload(jobId, url);

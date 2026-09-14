@@ -10,11 +10,16 @@ FROM node:20-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
+    python3-pip \
     ffmpeg \
     curl \
     ca-certificates \
     unzip \
   && rm -rf /var/lib/apt/lists/*
+
+# curl_cffi enables browser impersonation, which extractors like TikTok now require
+# to get past their bot checks (without it, yt-dlp only gets a stub challenge page)
+RUN pip3 install --no-cache-dir --break-system-packages curl_cffi
 
 # Install yt-dlp (ADD with a URL busts the Docker layer cache when the release changes,
 # so rebuilds actually pick up new versions instead of freezing on the first build's binary)
