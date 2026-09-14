@@ -4,44 +4,16 @@ import Queue from './screens/Queue.jsx';
 import Settings from './screens/Settings.jsx';
 import Playlists from './screens/Playlists.jsx';
 import TerminalSheet from './components/TerminalSheet.jsx';
+import BottomTabBar from './components/BottomTabBar.jsx';
 
 export default function App() {
   const [view, setView] = useState('home');
 
   return (
-    <div className="min-h-screen bg-bg-0 text-text-0">
-      <nav className="flex gap-2 p-4 border-b border-bg-1">
-        <button
-          type="button"
-          onClick={() => setView('home')}
-          className={view === 'home' ? 'text-text-0 font-semibold' : 'text-text-2'}
-        >
-          Home
-        </button>
-        <button
-          type="button"
-          onClick={() => setView('queue')}
-          className={view === 'queue' ? 'text-text-0 font-semibold' : 'text-text-2'}
-        >
-          Queue
-        </button>
-        <button
-          type="button"
-          onClick={() => setView('playlists')}
-          className={view === 'playlists' ? 'text-text-0 font-semibold' : 'text-text-2'}
-        >
-          Playlists
-        </button>
-        <button
-          type="button"
-          onClick={() => setView('settings')}
-          className={view === 'settings' ? 'text-text-0 font-semibold' : 'text-text-2'}
-        >
-          Settings
-        </button>
-      </nav>
+    <div className="min-h-screen bg-bg-0 text-text-0 pb-24">
       {view === 'home' ? <Home /> : view === 'queue' ? <Queue /> : view === 'playlists' ? <Playlists /> : <Settings />}
       <TerminalSheet />
+      <BottomTabBar active={view} onChange={setView} />
     </div>
   );
 }
