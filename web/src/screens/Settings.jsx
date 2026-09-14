@@ -1,6 +1,12 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Trash2 } from 'lucide-react';
 import { apiFetch, setStoredKey } from '../api/client.js';
+import Card from '../components/ui/Card.jsx';
+import Button from '../components/ui/Button.jsx';
+import TextInput from '../components/ui/TextInput.jsx';
+import IconButton from '../components/ui/IconButton.jsx';
+import ToggleRow from '../components/ui/ToggleRow.jsx';
 
 function useSettingsQuery() {
   return useQuery({ queryKey: ['settings'], queryFn: () => apiFetch('/settings') });
@@ -20,27 +26,17 @@ function useCookiesStatus() {
   return useQuery({ queryKey: ['cookies-status'], queryFn: () => apiFetch('/cookies-status') });
 }
 
-function ToggleRow({ label, checked, onChange }) {
-  return (
-    <label className="flex items-center justify-between py-2 gap-4">
-      <span className="text-text-1">{label}</span>
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="w-5 h-5" />
-    </label>
-  );
-}
-
 function TextRow({ label, value, onCommit, placeholder }) {
   const [local, setLocal] = useState(value);
   return (
     <label className="flex flex-col gap-1 py-2">
       <span className="text-text-1">{label}</span>
-      <input
+      <TextInput
         type="text"
         value={local}
         onChange={(e) => setLocal(e.target.value)}
         onBlur={() => { if (local !== value) onCommit(local); }}
         placeholder={placeholder}
-        className="bg-bg-1 text-text-0 px-3 py-2 rounded"
       />
     </label>
   );
@@ -173,16 +169,16 @@ export default function Settings() {
   const mutationError = patch.error || uploadCookies.error || removeCookies.error || toggleProxy.error || regenerateKey.error || updateYtDlp.error;
 
   return (
-    <div className="p-4 flex flex-col gap-6 max-w-xl">
+    <div className="p-4 flex flex-col gap-4 max-w-xl">
       {mutationError && <p className="text-danger">{mutationError.message}</p>}
-      <section>
+      <Card>
         <h2 className="text-text-0 font-semibold mb-2">Audio &amp; Video</h2>
         <label className="flex flex-col gap-1 py-2">
           <span className="text-text-1">Audioqualität</span>
           <select
             value={s.audioQuality}
             onChange={(e) => patch.mutate({ audioQuality: e.target.value })}
-            className="bg-bg-1 text-text-0 px-3 py-2 rounded"
+            className="bg-bg-2 text-text-0 px-3 py-2 rounded-lg"
           >
             <option value="128">128 kbps</option>
             <option value="192">192 kbps</option>
@@ -194,7 +190,7 @@ export default function Settings() {
           <select
             value={s.videoQuality}
             onChange={(e) => patch.mutate({ videoQuality: e.target.value })}
-            className="bg-bg-1 text-text-0 px-3 py-2 rounded"
+            className="bg-bg-2 text-text-0 px-3 py-2 rounded-lg"
           >
             <option value="best">Beste verfügbar</option>
             <option value="1080">1080p</option>
@@ -206,41 +202,39 @@ export default function Settings() {
         <ToggleRow label="Thumbnail einbetten" checked={s.embedThumbnail} onChange={(v) => patch.mutate({ embedThumbnail: v })} />
         <ToggleRow label="Untertitel herunterladen" checked={s.subtitlesEnabled} onChange={(v) => patch.mutate({ subtitlesEnabled: v })} />
         <TextRow label="Geschwindigkeitslimit" value={s.speedLimit} onCommit={(v) => patch.mutate({ speedLimit: v })} placeholder="z.B. 5M, leer = unbegrenzt" />
-      </section>
+      </Card>
 
-      <section>
+      <Card>
         <h2 className="text-text-0 font-semibold mb-2">Allgemein</h2>
         <ToggleRow label="Bestehende Dateien überspringen" checked={s.skipExisting} onChange={(v) => patch.mutate({ skipExisting: v })} />
         <ToggleRow label="Terminal auto-leeren" checked={s.clearBetweenItems} onChange={(v) => patch.mutate({ clearBetweenItems: v })} />
         <TextRow label="Pause zwischen Downloads (Sekunden)" value={s.downloadDelay} onCommit={(v) => patch.mutate({ downloadDelay: v })} placeholder="0" />
-      </section>
+      </Card>
 
-      <section>
+      <Card>
         <h2 className="text-text-0 font-semibold mb-2">Erweitert</h2>
         <TextRow label="Eigene yt-dlp Argumente" value={s.customArgs} onCommit={(v) => patch.mutate({ customArgs: v })} placeholder="z.B. --playlist-start 1" />
         <ToggleRow label="Deno JS-Runtime" checked={s.jsRuntime} onChange={(v) => patch.mutate({ jsRuntime: v })} />
         <ToggleRow label="Ausführliche Ausgabe" checked={s.verbose} onChange={(v) => patch.mutate({ verbose: v })} />
-      </section>
+      </Card>
 
-      <section>
+      <Card>
         <h2 className="text-text-0 font-semibold mb-2">YouTube Account</h2>
         <p className="text-text-2">
           Cookies: {cookiesStatus.data && cookiesStatus.data.active ? <span className="text-success">aktiv</span> : <span className="text-text-2">nicht aktiv</span>}
         </p>
         <div className="flex gap-2 mt-2">
-          <label className="bg-bg-1 text-text-0 px-4 py-2 rounded cursor-pointer">
+          <label className="bg-bg-2 text-text-0 px-4 py-2 rounded-lg cursor-pointer">
             Hochladen
             <input type="file" accept=".txt" onChange={handleCookiesFile} className="hidden" />
           </label>
           {cookiesStatus.data && cookiesStatus.data.active && (
-            <button type="button" onClick={() => removeCookies.mutate()} className="bg-bg-1 text-text-0 px-4 py-2 rounded">
-              Entfernen
-            </button>
+            <Button variant="secondary" onClick={() => removeCookies.mutate()}>Entfernen</Button>
           )}
         </div>
-      </section>
+      </Card>
 
-      <section>
+      <Card>
         <h2 className="text-text-0 font-semibold mb-2">Proxy</h2>
         <ToggleRow
           label="Proxy verwenden"
@@ -248,66 +242,51 @@ export default function Settings() {
           onChange={(v) => toggleProxy.mutate({ proxyEnabled: v, proxy: s.proxy, savedProxies: s.savedProxies })}
         />
         <div className="flex gap-2 mt-2">
-          <input
+          <TextInput
             type="text"
             value={proxyInput}
             onChange={(e) => setProxyInput(e.target.value)}
             placeholder="socks5://user:pass@127.0.0.1:1080"
-            className="flex-1 bg-bg-1 text-text-0 px-3 py-2 rounded"
+            className="flex-1"
           />
-          <button type="button" onClick={addProxy} className="bg-bg-1 text-text-0 px-4 py-2 rounded">
-            +
-          </button>
+          <Button variant="secondary" onClick={addProxy}>+</Button>
         </div>
-        <div className="flex flex-col gap-1 mt-2">
+        <div className="flex flex-col gap-2 mt-2">
           {(s.savedProxies || []).map((p) => (
-            <div key={p} className="flex justify-between items-center bg-bg-1 px-3 py-2 rounded">
+            <div key={p} className="flex justify-between items-center bg-bg-2 px-3 py-2 rounded-lg">
               <span className={p === s.proxy ? 'text-text-0' : 'text-text-2'}>{p}</span>
-              <button type="button" onClick={() => removeProxy(p)} className="text-danger">×</button>
+              <IconButton icon={Trash2} label="Proxy entfernen" tone="danger" onClick={() => removeProxy(p)} />
             </div>
           ))}
         </div>
-      </section>
+      </Card>
 
-      <section>
+      <Card>
         <h2 className="text-text-0 font-semibold mb-2">API-Key</h2>
-        <p className="text-text-2 text-sm">Für iOS Shortcuts, Tasker & Co. — als <code>Authorization: Bearer &lt;Key&gt;</code> Header mitschicken.</p>
+        <p className="text-text-2 text-sm">Für iOS Shortcuts, Tasker &amp; Co. — als <code>Authorization: Bearer &lt;Key&gt;</code> Header mitschicken. Für die Nutzung im Browser wird kein Key mehr benötigt.</p>
         <div className="flex gap-2 mt-2 items-center">
-          <code className="flex-1 bg-bg-1 text-text-0 px-3 py-2 rounded overflow-x-auto whitespace-nowrap">
+          <code className="flex-1 bg-bg-2 text-text-0 px-3 py-2 rounded-lg overflow-x-auto whitespace-nowrap">
             {showKey ? s.apiKey : '••••••••••••••••••••••••••••••••••••••••••••••••'}
           </code>
-          <button type="button" onClick={() => setShowKey((v) => !v)} className="bg-bg-1 text-text-0 px-3 py-2 rounded">
-            {showKey ? 'Verbergen' : 'Anzeigen'}
-          </button>
-          <button
-            type="button"
-            onClick={copyApiKey}
-            className="bg-bg-1 text-text-0 px-3 py-2 rounded"
-          >
-            Kopieren
-          </button>
+          <Button variant="secondary" onClick={() => setShowKey((v) => !v)}>{showKey ? 'Verbergen' : 'Anzeigen'}</Button>
+          <Button variant="secondary" onClick={copyApiKey}>Kopieren</Button>
         </div>
-        <button
-          type="button"
+        <Button
+          variant="danger"
           onClick={handleRegenerateKey}
           disabled={regenerateKey.isPending}
-          className="mt-2 bg-danger text-text-0 px-4 py-2 rounded disabled:opacity-50"
+          className="mt-2"
         >
           {regenerateKey.isPending ? 'Wird erneuert...' : 'Neu generieren'}
-        </button>
-      </section>
+        </Button>
+      </Card>
 
-      <section>
+      <Card>
         <h2 className="text-text-0 font-semibold mb-2">Wartung</h2>
-        <button
-          type="button"
-          onClick={() => updateYtDlp.mutate()}
-          disabled={updateYtDlp.isPending}
-          className="bg-bg-1 text-text-0 px-4 py-2 rounded disabled:opacity-50"
-        >
+        <Button variant="secondary" onClick={() => updateYtDlp.mutate()} disabled={updateYtDlp.isPending}>
           {updateYtDlp.isPending ? 'Prüfe...' : 'yt-dlp aktualisieren'}
-        </button>
-      </section>
+        </Button>
+      </Card>
     </div>
   );
 }
