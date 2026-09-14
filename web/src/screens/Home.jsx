@@ -2,6 +2,10 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '../api/client.js';
 import { detectPlatform } from '../platform.js';
+import Card from '../components/ui/Card.jsx';
+import Button from '../components/ui/Button.jsx';
+import TextInput from '../components/ui/TextInput.jsx';
+import Badge from '../components/ui/Badge.jsx';
 
 export default function Home() {
   const [url, setUrl] = useState('');
@@ -29,43 +33,44 @@ export default function Home() {
 
   return (
     <div className="p-4">
-      <div className="flex gap-2">
-        <input
-          type="text"
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          placeholder="URL eingeben..."
-          className="flex-1 bg-bg-1 text-text-0 px-3 py-2 rounded"
-        />
-        <span className="text-text-2 self-center">{platform.label}</span>
-      </div>
-      <div className="flex gap-2 mt-3">
-        <button
-          type="button"
-          onClick={() => setFormat.mutate('mp3')}
-          aria-pressed={format === 'mp3'}
-          className={format === 'mp3' ? 'bg-indigo text-text-0 px-4 py-2 rounded' : 'bg-bg-1 text-text-2 px-4 py-2 rounded'}
+      <Card className="flex flex-col gap-3">
+        <div className="flex gap-2 items-center">
+          <TextInput
+            type="text"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="URL eingeben..."
+            className="flex-1"
+          />
+          {url && <Badge>{platform.label}</Badge>}
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant={format === 'mp3' ? 'primary' : 'secondary'}
+            aria-pressed={format === 'mp3'}
+            onClick={() => setFormat.mutate('mp3')}
+            className="flex-1"
+          >
+            MP3
+          </Button>
+          <Button
+            variant={format === 'mp4' ? 'primary' : 'secondary'}
+            aria-pressed={format === 'mp4'}
+            onClick={() => setFormat.mutate('mp4')}
+            className="flex-1"
+          >
+            MP4
+          </Button>
+        </div>
+        <Button
+          onClick={() => addToQueue.mutate()}
+          disabled={!url || addToQueue.isPending}
+          className="w-full"
         >
-          MP3
-        </button>
-        <button
-          type="button"
-          onClick={() => setFormat.mutate('mp4')}
-          aria-pressed={format === 'mp4'}
-          className={format === 'mp4' ? 'bg-indigo text-text-0 px-4 py-2 rounded' : 'bg-bg-1 text-text-2 px-4 py-2 rounded'}
-        >
-          MP4
-        </button>
-      </div>
-      <button
-        type="button"
-        onClick={() => addToQueue.mutate()}
-        disabled={!url || addToQueue.isPending}
-        className="mt-3 bg-indigo text-text-0 px-4 py-2 rounded disabled:opacity-50"
-      >
-        {addToQueue.isPending ? 'Wird hinzugefügt...' : 'Zur Queue hinzufügen'}
-      </button>
-      {addToQueue.isError && <p className="text-danger mt-2">{addToQueue.error.message}</p>}
+          {addToQueue.isPending ? 'Wird hinzugefügt...' : 'Zur Queue hinzufügen'}
+        </Button>
+        {addToQueue.isError && <p className="text-danger">{addToQueue.error.message}</p>}
+      </Card>
     </div>
   );
 }
