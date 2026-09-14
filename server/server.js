@@ -272,10 +272,24 @@ function makeQueueItem(url, langOptions, customName, groupId, groupTitle) {
 }
 
 function broadcastQueueState() {
-  broadcast('queue-update', {
-    remaining: downloadQueue.length,
-    items: queueItems.map(({ id, url, customName, status, progress, error, filename, groupId, groupTitle }) => ({ id, url, customName, status, progress, error, filename, groupId, groupTitle })),
-  });
+  const items = queueItems.map(({ id, url, customName, status, progress, error, filename, groupId, groupTitle }) => ({ id, url, customName, status, progress, error, filename, groupId, groupTitle }));
+
+  for (const [jobId, job] of shortcutJobs.entries()) {
+    items.push({
+      id: `shortcut-${jobId}`,
+      url: job.url,
+      customName: null,
+      status: job.status === 'pending' ? 'active' : job.status,
+      progress: null,
+      error: job.error,
+      filename: job.filename,
+      groupId: null,
+      groupTitle: null,
+      source: 'shortcut',
+    });
+  }
+
+  broadcast('queue-update', { remaining: downloadQueue.length, items });
 }
 
 function extractErrorSummary(stderr) {
@@ -681,6 +695,15 @@ app.post('/api/queue', (req, res) => {
 });
 
 app.get('/api/queue/:id/file', (req, res) => {
+  if (req.params.id.startsWith('shortcut-')) {
+    const job = shortcutJobs.get(req.params.id.slice('shortcut-'.length));
+    if (!job || job.status !== 'done' || !job.filename) return res.status(404).send('Not found');
+    const filePath = path.join(SHORTCUTS_OUTPUT_DIR, job.filename);
+    if (!fs.existsSync(filePath)) return res.status(404).send('File not found');
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(job.filename)}`);
+    return res.sendFile(filePath);
+  }
+
   const item = queueItems.find(i => i.id === parseInt(req.params.id, 10));
   if (!item || item.status !== 'done' || !item.filename) return res.status(404).send('Not found');
   const filePath = path.join(DOWNLOAD_PATH, item.filename);
@@ -698,12 +721,15 @@ const shortcutJobs  = new Map(); // jobId → { status, filename, error, created
 // Cleanup job work dirs older than 1 hour (finished jobs' output already moved out)
 setInterval(() => {
   const cutoff = Date.now() - 60 * 60 * 1000;
+  let removed = false;
   for (const [jobId, job] of shortcutJobs.entries()) {
     if (job.createdAt < cutoff) {
       try { fs.rmSync(path.join(SHORTCUTS_TMP_DIR, jobId), { recursive: true, force: true }); } catch {}
       shortcutJobs.delete(jobId);
+      removed = true;
     }
   }
+  if (removed) broadcastQueueState();
 }, 10 * 60 * 1000);
 
 // /tmp and DOWNLOAD_PATH are usually different filesystems (bind mount), so a plain
@@ -785,12 +811,14 @@ function runShortcutDownload(jobId, url) {
       log(`[SHORTCUTS] Download failed (code ${code})\n\n`);
       console.log(`[SHORTCUTS] Failed (${url}): ${job.error}`);
     }
+    broadcastQueueState();
   });
 
   proc.on('error', (err) => {
     const job = shortcutJobs.get(jobId);
     if (job) { job.status = 'error'; job.error = 'Process spawn failed'; }
     console.log(`[SHORTCUTS] Failed (${url}): Process spawn failed — ${err.message}`);
+    broadcastQueueState();
   });
 }
 
@@ -800,6 +828,7 @@ app.post('/api/shortcuts/download', (req, res) => {
 
   const jobId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   shortcutJobs.set(jobId, { status: 'pending', filename: null, error: null, url, createdAt: Date.now() });
+  broadcastQueueState();
 
   res.json({ success: true, jobId, pollUrl: `/api/shortcuts/status/${jobId}` });
   runShortcutDownload(jobId, url);

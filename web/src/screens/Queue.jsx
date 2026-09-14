@@ -47,7 +47,7 @@ function ItemRow({ item, onRetry, saving, onSaveToPhotos, saveError }) {
               disabled={saving}
             />
           )}
-          {item.status === 'error' && (
+          {item.status === 'error' && item.source !== 'shortcut' && (
             <IconButton icon={RotateCw} label="Erneut versuchen" onClick={() => onRetry(item)} />
           )}
           <IconButton icon={SquareTerminal} label="Terminal anzeigen" onClick={openTerminal} />
