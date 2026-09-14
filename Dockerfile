@@ -16,7 +16,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     unzip \
   && rm -rf /var/lib/apt/lists/*
 
-# Install yt-dlp
+# Install yt-dlp (ADD with a URL busts the Docker layer cache when the release changes,
+# so rebuilds actually pick up new versions instead of freezing on the first build's binary)
+ADD https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest /tmp/yt-dlp-latest.json
 RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp \
   && chmod +x /usr/local/bin/yt-dlp
 

@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const crypto = require('crypto');
 const { spawn } = require('child_process');
 const { WebSocketServer } = require('ws');
@@ -32,7 +33,6 @@ const DEFAULT_SETTINGS = {
   proxy: '',
   proxyEnabled: false,
   savedProxies: [],
-  savedPlaylists: [],
   customPlaylists: [],
   savedPrefixes: [],
   customArgs: '',
@@ -90,6 +90,15 @@ function log(message) {
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'web', 'dist')));
+
+app.use((req, res, next) => {
+  if (!req.path.startsWith('/api')) return next();
+  const start = Date.now();
+  res.on('finish', () => {
+    console.log(`[API] ${req.method} ${req.originalUrl} ${res.statusCode} ${Date.now() - start}ms`);
+  });
+  next();
+});
 
 function requireApiKey(req, res, next) {
   const header = req.get('authorization') || '';
@@ -241,7 +250,7 @@ let queueItems = [];      // full visible list for the current batch: pending/ac
 let queueItemIdCounter = 0;
 let processingQueue = false;
 
-function makeQueueItem(url, langOptions, customName) {
+function makeQueueItem(url, langOptions, customName, groupId, groupTitle) {
   const item = {
     id: ++queueItemIdCounter,
     url,
@@ -250,6 +259,9 @@ function makeQueueItem(url, langOptions, customName) {
     status: 'pending',
     progress: null,
     error: null,
+    filename: null,
+    groupId: groupId || null,
+    groupTitle: groupTitle || null,
   };
   queueItems.push(item);
   downloadQueue.push(item);
@@ -259,7 +271,7 @@ function makeQueueItem(url, langOptions, customName) {
 function broadcastQueueState() {
   broadcast('queue-update', {
     remaining: downloadQueue.length,
-    items: queueItems.map(({ id, url, customName, status, progress, error }) => ({ id, url, customName, status, progress, error })),
+    items: queueItems.map(({ id, url, customName, status, progress, error, filename, groupId, groupTitle }) => ({ id, url, customName, status, progress, error, filename, groupId, groupTitle })),
   });
 }
 
@@ -270,7 +282,22 @@ function extractErrorSummary(stderr) {
   return lines.length ? lines[lines.length - 1].slice(0, 200) : 'Unbekannter Fehler';
 }
 
+// Downloaded files must be owned by uid 3000 / gid 100 (users) on the host.
+function chownDownload(filePath) {
+  try { fs.chownSync(filePath, 3000, 100); } catch {}
+}
+
 const PROGRESS_RE = /\[download\]\s+(\d{1,3}(?:\.\d+)?)%/;
+const DESTINATION_RE = /\[(?:download|ExtractAudio)\] Destination: (.+)|\[Merger\] Merging formats into "(.+)"|\[download\] (.+) has already been downloaded/g;
+
+function extractOutputFilename(stdout) {
+  let match;
+  let last = null;
+  while ((match = DESTINATION_RE.exec(stdout)) !== null) {
+    last = (match[1] || match[2] || match[3]).trim();
+  }
+  return last ? path.basename(last) : null;
+}
 
 function runDownload(item) {
   const { url, langOptions, customName } = item;
@@ -281,6 +308,8 @@ function runDownload(item) {
         log(`[SKIP] Already exists: ${check.filename}\n\n`);
         item.status = 'done';
         item.progress = null;
+        item.filename = check.filename;
+        chownDownload(path.join(DOWNLOAD_PATH, item.filename));
         broadcastQueueState();
         broadcast('download-complete', { success: true });
         return resolve();
@@ -361,6 +390,8 @@ function runDownload(item) {
         log(msg);
         item.status = 'done';
         item.progress = null;
+        item.filename = extractOutputFilename(stdoutBuffer);
+        if (item.filename) chownDownload(path.join(DOWNLOAD_PATH, item.filename));
         broadcastQueueState();
         broadcast('download-complete', { success: true });
       } else {
@@ -400,6 +431,16 @@ async function processDownloadQueue() {
   processingQueue = false;
   broadcastQueueState();
 }
+
+setInterval(() => {
+  const active = queueItems.filter(i => i.status === 'active');
+  const pending = downloadQueue.length;
+  if (active.length === 0 && pending === 0) return;
+  const activeInfo = active
+    .map(i => `${(i.customName || i.url).slice(0, 60)}${i.progress ? ` ${i.progress}%` : ''}`)
+    .join(', ');
+  console.log(`[QUEUE] ${active.length} aktiv, ${pending} wartend${activeInfo ? ' — ' + activeInfo : ''}`);
+}, 10000);
 
 // ─── API: Settings ───────────────────────────────────────────────────────────
 
@@ -549,29 +590,6 @@ app.get('/api/playlist-info', (req, res) => {
   });
 });
 
-// ─── API: Saved Playlists ────────────────────────────────────────────────────
-
-app.get('/api/saved-playlists', (req, res) => {
-  res.json(settings.savedPlaylists || []);
-});
-
-app.post('/api/saved-playlists', (req, res) => {
-  const { name, url } = req.body;
-  if (!url) return res.json({ success: false });
-  const playlists = settings.savedPlaylists || [];
-  playlists.push({ id: Date.now(), name: name || url, url });
-  settings.savedPlaylists = playlists;
-  saveSettings(settings);
-  res.json({ success: true, playlists });
-});
-
-app.delete('/api/saved-playlists/:id', (req, res) => {
-  const id = parseInt(req.params.id);
-  settings.savedPlaylists = (settings.savedPlaylists || []).filter(p => p.id !== id);
-  saveSettings(settings);
-  res.json({ success: true });
-});
-
 // ─── API: Custom Playlists ───────────────────────────────────────────────────
 
 app.get('/api/custom-playlists', (req, res) => {
@@ -634,15 +652,16 @@ app.post('/api/download', (req, res) => {
 });
 
 app.post('/api/queue', (req, res) => {
-  const { urls, customName, items } = req.body;
+  const { urls, customName, items, groupTitle } = req.body;
   if (!processingQueue && downloadQueue.length === 0) queueItems = [];
+  const groupId = groupTitle ? `g${++queueItemIdCounter}` : null;
   if (items && Array.isArray(items) && items.length > 0) {
-    items.forEach(item => makeQueueItem(item.url, null, item.customName));
+    items.forEach(item => makeQueueItem(item.url, null, item.customName, groupId, groupTitle));
     broadcastQueueState();
     res.json({ success: true, queued: items.length });
     processDownloadQueue();
   } else if (Array.isArray(urls) && urls.length > 0) {
-    urls.forEach(url => makeQueueItem(url, null, customName));
+    urls.forEach(url => makeQueueItem(url, null, customName, groupId, groupTitle));
     broadcastQueueState();
     res.json({ success: true, queued: urls.length });
     processDownloadQueue();
@@ -651,51 +670,93 @@ app.post('/api/queue', (req, res) => {
   }
 });
 
+app.get('/api/queue/:id/file', (req, res) => {
+  const item = queueItems.find(i => i.id === parseInt(req.params.id, 10));
+  if (!item || item.status !== 'done' || !item.filename) return res.status(404).send('Not found');
+  const filePath = path.join(DOWNLOAD_PATH, item.filename);
+  if (!fs.existsSync(filePath)) return res.status(404).send('File not found');
+  res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(item.filename)}`);
+  res.sendFile(filePath);
+});
+
 // ─── API: iOS Shortcuts ──────────────────────────────────────────────────────
 
-const SHORTCUTS_DIR = path.join(DOWNLOAD_PATH, 'shortcuts');
+const SHORTCUTS_TMP_DIR    = path.join(os.tmpdir(), 'yt-dlp-web-shortcuts');
+const SHORTCUTS_OUTPUT_DIR = path.join(DOWNLOAD_PATH, 'Downloader');
 const shortcutJobs  = new Map(); // jobId → { status, filename, error, createdAt }
 
-// Cleanup jobs older than 1 hour
+// Cleanup job work dirs older than 1 hour (finished jobs' output already moved out)
 setInterval(() => {
   const cutoff = Date.now() - 60 * 60 * 1000;
   for (const [jobId, job] of shortcutJobs.entries()) {
     if (job.createdAt < cutoff) {
-      try { fs.rmSync(path.join(SHORTCUTS_DIR, jobId), { recursive: true, force: true }); } catch {}
+      try { fs.rmSync(path.join(SHORTCUTS_TMP_DIR, jobId), { recursive: true, force: true }); } catch {}
       shortcutJobs.delete(jobId);
     }
   }
 }, 10 * 60 * 1000);
 
+// /tmp and DOWNLOAD_PATH are usually different filesystems (bind mount), so a plain
+// rename can fail with EXDEV — fall back to copy+delete in that case.
+function moveFile(src, dest) {
+  try {
+    fs.renameSync(src, dest);
+  } catch (err) {
+    if (err.code !== 'EXDEV') throw err;
+    fs.copyFileSync(src, dest);
+    fs.unlinkSync(src);
+  }
+}
+
+function uniqueDestPath(dir, filename) {
+  const ext = path.extname(filename);
+  const base = path.basename(filename, ext);
+  let candidate = filename;
+  let i = 1;
+  while (fs.existsSync(path.join(dir, candidate))) {
+    candidate = `${base} (${i})${ext}`;
+    i++;
+  }
+  return path.join(dir, candidate);
+}
+
 function runShortcutDownload(jobId, url) {
-  const jobDir = path.join(SHORTCUTS_DIR, jobId);
+  const jobDir = path.join(SHORTCUTS_TMP_DIR, jobId);
   fs.mkdirSync(jobDir, { recursive: true });
 
   const args = buildDownloadArgs(url, null, null);
   // Override output path to the job-specific dir
   const oIdx = args.indexOf('-o');
-  if (oIdx !== -1) args[oIdx + 1] = path.join(jobDir, '%(title)s.%(ext)s');
+  if (oIdx !== -1) args[oIdx + 1] = path.join(jobDir, '%(title)s [%(id)s].%(ext)s');
 
   log(`\n[SHORTCUTS] Download started: ${url}\n`);
 
   const proc = spawn(YTDLP_PATH, args);
+  let stderrBuffer = '';
 
   proc.stdout.on('data', (data) => {
     const filtered = data.toString().split('\n').filter(l => !l.startsWith('WARNING:')).join('\n');
     log(filtered);
   });
-  proc.stderr.on('data', () => {});
+  proc.stderr.on('data', (data) => { stderrBuffer += data.toString(); });
 
   proc.on('close', (code) => {
     const job = shortcutJobs.get(jobId);
     if (!job) return;
-    if (code === 0 || code === 1) {
+    const hasFatalError = /(^|\n)ERROR:/.test(stderrBuffer);
+    if ((code === 0 || code === 1) && !hasFatalError) {
       try {
-        const files = fs.readdirSync(jobDir).filter(f => !f.startsWith('.'));
+        const files = fs.readdirSync(jobDir).filter(f => !f.startsWith('.') && !/\.(webp|jpe?g|png|vtt|srt)$/i.test(f));
         if (files.length > 0) {
+          fs.mkdirSync(SHORTCUTS_OUTPUT_DIR, { recursive: true });
+          const destPath = uniqueDestPath(SHORTCUTS_OUTPUT_DIR, files[0]);
+          moveFile(path.join(jobDir, files[0]), destPath);
+          chownDownload(destPath);
+          fs.rmSync(jobDir, { recursive: true, force: true });
+
           job.status   = 'done';
-          job.filename = files[0];
-          log(`[SHORTCUTS] Ready for download: ${files[0]}\n\n`);
+          job.filename = path.basename(destPath);
+          log(`[SHORTCUTS] Ready for download: ${job.filename}\n\n`);
         } else {
           job.status = 'error';
           job.error  = 'No file produced';
@@ -706,7 +767,7 @@ function runShortcutDownload(jobId, url) {
       }
     } else {
       job.status = 'error';
-      job.error  = `yt-dlp exit code ${code}`;
+      job.error  = extractErrorSummary(stderrBuffer) || `yt-dlp exit code ${code}`;
       log(`[SHORTCUTS] Download failed (code ${code})\n\n`);
     }
   });
@@ -735,7 +796,8 @@ app.get('/api/shortcuts/status/:jobId', (req, res) => {
   const resp = { success: true, status: job.status };
   if (job.status === 'done' && job.filename) {
     resp.filename    = job.filename;
-    resp.downloadUrl = `${req.protocol}://${req.get('host')}/api/shortcuts/file/${req.params.jobId}/${encodeURIComponent(job.filename)}`;
+    const protocol = req.get('x-forwarded-proto') || req.protocol;
+    resp.downloadUrl = `${protocol}://${req.get('host')}/api/shortcuts/file/${req.params.jobId}/${encodeURIComponent(job.filename)}`;
   }
   if (job.status === 'error') resp.error = job.error;
   res.json(resp);
@@ -743,11 +805,10 @@ app.get('/api/shortcuts/status/:jobId', (req, res) => {
 
 app.get('/api/shortcuts/file/:jobId/:filename', (req, res) => {
   const job = shortcutJobs.get(req.params.jobId);
-  if (!job || job.status !== 'done') return res.status(404).send('Not found');
-  const filename = path.basename(decodeURIComponent(req.params.filename));
-  const filePath = path.join(SHORTCUTS_DIR, req.params.jobId, filename);
+  if (!job || job.status !== 'done' || !job.filename) return res.status(404).send('Not found');
+  const filePath = path.join(SHORTCUTS_OUTPUT_DIR, job.filename);
   if (!fs.existsSync(filePath)) return res.status(404).send('File not found');
-  res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
+  res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(job.filename)}`);
   res.sendFile(filePath);
 });
 

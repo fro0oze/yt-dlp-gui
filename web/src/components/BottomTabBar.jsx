@@ -1,9 +1,8 @@
-import { Home as HomeIcon, ListChecks, Folder, Settings as SettingsIcon } from 'lucide-react';
+import { Home as HomeIcon, ListChecks, Settings as SettingsIcon } from 'lucide-react';
 
 const TABS = [
   { id: 'home', label: 'Home', icon: HomeIcon },
   { id: 'queue', label: 'Queue', icon: ListChecks },
-  { id: 'playlists', label: 'Playlists', icon: Folder },
   { id: 'settings', label: 'Settings', icon: SettingsIcon },
 ];
 

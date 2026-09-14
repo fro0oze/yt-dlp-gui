@@ -22,3 +22,12 @@ export function detectPlatform(url) {
 
   return GENERIC;
 }
+
+export function isPlaylistUrl(url) {
+  if (!url) return false;
+  try {
+    return new URL(url).searchParams.has('list');
+  } catch {
+    return false;
+  }
+}

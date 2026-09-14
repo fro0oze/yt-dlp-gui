@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ClipboardPaste } from 'lucide-react';
 import { apiFetch } from '../api/client.js';
-import { detectPlatform } from '../platform.js';
+import { detectPlatform, isPlaylistUrl } from '../platform.js';
 import Card from '../components/ui/Card.jsx';
 import Button from '../components/ui/Button.jsx';
 import TextInput from '../components/ui/TextInput.jsx';
@@ -13,6 +13,7 @@ export default function Home() {
   const [url, setUrl] = useState('');
   const [pasteError, setPasteError] = useState('');
   const queryClient = useQueryClient();
+  const clipboardAvailable = !!navigator.clipboard;
 
   async function pasteFromClipboard() {
     try {
@@ -22,7 +23,7 @@ export default function Home() {
         setPasteError('');
       }
     } catch {
-      setPasteError('Einfügen nicht möglich — bitte manuell einfügen.');
+      setPasteError('Zugriff auf Zwischenablage verweigert — bitte manuell einfügen.');
     }
   }
 
@@ -40,7 +41,21 @@ export default function Home() {
   });
 
   const addToQueue = useMutation({
-    mutationFn: () => apiFetch('/download', { method: 'POST', body: JSON.stringify({ url }) }),
+    mutationFn: async () => {
+      if (isPlaylistUrl(url)) {
+        const info = await apiFetch(`/playlist-info?url=${encodeURIComponent(url)}`);
+        if (info.success && info.entries.length > 0) {
+          return apiFetch('/queue', {
+            method: 'POST',
+            body: JSON.stringify({
+              items: info.entries.map((e) => ({ url: e.url })),
+              groupTitle: info.title,
+            }),
+          });
+        }
+      }
+      return apiFetch('/download', { method: 'POST', body: JSON.stringify({ url }) });
+    },
     onSuccess: () => setUrl(''),
   });
 
@@ -58,7 +73,9 @@ export default function Home() {
             className="flex-1"
           />
           {url && <Badge>{platform.label}</Badge>}
-          <IconButton icon={ClipboardPaste} label="URL einfügen" onClick={pasteFromClipboard} />
+          {clipboardAvailable && (
+            <IconButton icon={ClipboardPaste} label="URL einfügen" onClick={pasteFromClipboard} />
+          )}
         </div>
         {pasteError && <p className="text-danger text-sm">{pasteError}</p>}
         <div className="flex gap-2">
